@@ -1,6 +1,6 @@
 namespace TrayTranslator.Core.Settings;
 
-public enum ThemeMode
+public enum ThemePreference
 {
     /// <summary>Follow the Windows app theme (light or dark).</summary>
     System,

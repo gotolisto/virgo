@@ -30,7 +30,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
             GoogleMonthlyCeiling = 100_000,
             AllowPaidUsage = true,
             StartWithWindows = false,
-            Theme = ThemeMode.Dark,
+            Theme = ThemePreference.Dark,
             CheckForUpdatesAutomatically = false,
             FirstRunCompleted = true,
         };
@@ -45,7 +45,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
     public void Enums_are_written_as_names()
     {
         var path = _dir.File("settings.json");
-        new JsonSettingsStore(path).Save(new AppSettings { DefaultEngine = EngineId.Google, Theme = ThemeMode.Light });
+        new JsonSettingsStore(path).Save(new AppSettings { DefaultEngine = EngineId.Google, Theme = ThemePreference.Light });
 
         var json = File.ReadAllText(path);
         Assert.Contains("\"defaultEngine\": \"Google\"", json, StringComparison.Ordinal);

@@ -17,7 +17,7 @@ public class AppSettingsTests
         Assert.Equal(480_000, s.GoogleMonthlyCeiling);
         Assert.False(s.AllowPaidUsage);
         Assert.True(s.StartWithWindows);
-        Assert.Equal(ThemeMode.System, s.Theme);
+        Assert.Equal(ThemePreference.System, s.Theme);
         Assert.True(s.CheckForUpdatesAutomatically);
         Assert.False(s.FirstRunCompleted);
     }
@@ -76,8 +76,8 @@ public class AppSettingsTests
     [Fact]
     public void Undefined_enum_values_fall_back()
     {
-        var s = new AppSettings { DefaultEngine = (EngineId)99, Theme = (ThemeMode)99 }.Normalize();
+        var s = new AppSettings { DefaultEngine = (EngineId)99, Theme = (ThemePreference)99 }.Normalize();
         Assert.Equal(EngineId.DeepL, s.DefaultEngine);
-        Assert.Equal(ThemeMode.System, s.Theme);
+        Assert.Equal(ThemePreference.System, s.Theme);
     }
 }

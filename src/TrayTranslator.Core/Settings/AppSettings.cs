@@ -42,7 +42,7 @@ public sealed record AppSettings
 
     public bool StartWithWindows { get; init; } = true;
 
-    public ThemeMode Theme { get; init; } = ThemeMode.System;
+    public ThemePreference Theme { get; init; } = ThemePreference.System;
 
     public bool CheckForUpdatesAutomatically { get; init; } = true;
 
@@ -73,7 +73,7 @@ public sealed record AppSettings
             DoublePressIntervalMs = Math.Clamp(DoublePressIntervalMs, MinDoublePressIntervalMs, MaxDoublePressIntervalMs),
             MaxTextLength = Math.Clamp(MaxTextLength, MinMaxTextLength, MaxMaxTextLength),
             GoogleMonthlyCeiling = Math.Max(0, GoogleMonthlyCeiling),
-            Theme = Enum.IsDefined(Theme) ? Theme : ThemeMode.System,
+            Theme = Enum.IsDefined(Theme) ? Theme : ThemePreference.System,
         };
     }
 
