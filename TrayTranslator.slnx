@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TrayTranslator.App/TrayTranslator.App.csproj" />
+    <Project Path="src/TrayTranslator.Core/TrayTranslator.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TrayTranslator.Tests/TrayTranslator.Tests.csproj" />
+  </Folder>
+</Solution>

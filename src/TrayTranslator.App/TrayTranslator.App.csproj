@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Lets the project build (not run) on Linux and macOS CI. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>TrayTranslator</AssemblyName>
+    <RootNamespace>TrayTranslator.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>TrayTranslator.App.Program</StartupObject>
+
+    <!-- The one place the version lives. MAJOR.MINOR.PATCH. About and the tooltip read it from the assembly. -->
+    <Version>0.1.0</Version>
+
+    <Product>Tray Translator</Product>
+    <Company>gotolisto</Company>
+    <Copyright>Copyright © gotolisto</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- App.xaml is a plain page so Program.Main stays ours (Velopack's hook must run first). -->
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.15" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrayTranslator.Core\TrayTranslator.Core.csproj" />
+  </ItemGroup>
+
+</Project>
