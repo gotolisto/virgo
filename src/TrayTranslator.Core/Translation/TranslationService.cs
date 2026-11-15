@@ -82,7 +82,7 @@ public sealed partial class TranslationService
         catch (TranslationException ex)
         {
             LogFailed(_logger, ex.Engine, ex.Kind, ex.StatusCode);
-            return new TranslationOutcome.Failure(ex.Kind, direction, ex.AllEnginesExhausted);
+            return new TranslationOutcome.Failure(ex.Kind, direction, ex.Engine, ex.AllEnginesExhausted);
         }
     }
 

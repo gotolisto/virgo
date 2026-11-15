@@ -176,6 +176,13 @@ public class TranslationServiceTests
     }
 
     [Fact]
+    public void One_engine_exhausted_names_it()
+    {
+        var failure = new TranslationOutcome.Failure(TranslationErrorKind.QuotaExceeded, new TranslationDirection(Lang.Es, Lang.En), EngineId.Google);
+        Assert.Equal("Monthly limit reached on Google", PopupText.For(failure).Message);
+    }
+
+    [Fact]
     public void Too_long_message_includes_the_limit()
     {
         Assert.Equal("Too long: the limit is 5,000 characters", PopupText.TooLong(5000));

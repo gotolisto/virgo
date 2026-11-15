@@ -19,10 +19,12 @@ public abstract record TranslationOutcome
         EngineId Engine,
         string? Notice) : TranslationOutcome;
 
+    /// <param name="Engine">The engine whose answer decided the failure.</param>
     /// <param name="AllEnginesExhausted">True when every engine with a key has used its monthly allowance.</param>
     public sealed record Failure(
         TranslationErrorKind Kind,
         TranslationDirection Direction,
+        EngineId Engine = EngineId.DeepL,
         bool AllEnginesExhausted = false) : TranslationOutcome;
 
     public sealed record TooLong(int Limit) : TranslationOutcome;

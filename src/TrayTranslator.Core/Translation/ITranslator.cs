@@ -14,28 +14,6 @@ public interface ITranslator
     Task<RoutedTranslation> TranslateAsync(string text, TranslationDirection direction, CancellationToken ct);
 }
 
-/// <summary>One engine with the request timeout applied. Milestone 4 replaces it with failover.</summary>
-public sealed class SingleEngineTranslator : ITranslator
-{
-    private readonly ITranslationEngine _engine;
-    private readonly TimeSpan _timeout;
-
-    public SingleEngineTranslator(ITranslationEngine engine, TimeSpan? timeout = null)
-    {
-        ArgumentNullException.ThrowIfNull(engine);
-        _engine = engine;
-        _timeout = timeout ?? TranslationTimeouts.Request;
-    }
-
-    public async Task<RoutedTranslation> TranslateAsync(string text, TranslationDirection direction, CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(direction);
-        var result = await TranslationTimeouts.RunAsync(
-            _engine.Id, _timeout, token => _engine.TranslateAsync(text, direction.Source, direction.Target, token), ct).ConfigureAwait(false);
-        return new RoutedTranslation(result, _engine.Id);
-    }
-}
-
 public static class TranslationTimeouts
 {
     /// <summary>How long one engine gets to answer before the request counts as timed out.</summary>

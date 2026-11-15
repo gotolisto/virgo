@@ -27,6 +27,8 @@ public static class PopupText
     public const string NoAnswer = "The translation service did not answer";
     public const string NotTranslatable = "This text could not be translated";
 
+    public static string LimitReached(EngineId engine) => $"Monthly limit reached on {engine.DisplayName()}";
+
     public static string SwitchedTo(EngineId engine) => $"Switched to {engine.DisplayName()}";
 
     public static string TooLong(int limit) =>
@@ -53,7 +55,7 @@ public static class PopupText
             TranslationErrorKind.MissingKey or TranslationErrorKind.BadKey =>
                 new PopupMessage(CheckApiKey, PopupAction.OpenSettings, "Open Settings"),
             TranslationErrorKind.RateLimited => new PopupMessage(TryAgain, PopupAction.Retry, "Try again"),
-            TranslationErrorKind.QuotaExceeded => new PopupMessage(BothExhausted),
+            TranslationErrorKind.QuotaExceeded => new PopupMessage(LimitReached(failure.Engine)),
             TranslationErrorKind.Timeout or TranslationErrorKind.ServerError =>
                 new PopupMessage(NoAnswer, PopupAction.Retry, "Retry"),
             _ => new PopupMessage(NotTranslatable),

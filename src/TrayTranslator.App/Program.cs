@@ -8,6 +8,7 @@ using TrayTranslator.Core.Engines;
 using TrayTranslator.Core.Secrets;
 using TrayTranslator.Core.Settings;
 using TrayTranslator.Core.Translation;
+using TrayTranslator.Core.Usage;
 
 namespace TrayTranslator.App;
 
@@ -27,10 +28,14 @@ internal static class Program
         var secrets = new ProtectedFileSecretStore(paths.SecretsFile, new DpapiBytesProtector(), loggerFactory.CreateLogger<ProtectedFileSecretStore>());
 
         using var http = HttpClients.CreateForEngines();
+        var usage = new UsageTracker(paths.UsageFile, logger: loggerFactory.CreateLogger<UsageTracker>());
         var deepl = new DeepLEngine(http, () => secrets.Get(SecretNames.DeepLApiKey), loggerFactory.CreateLogger<DeepLEngine>());
+        var google = new GoogleEngine(
+            http, () => secrets.Get(SecretNames.GoogleApiKey), usage, () => settingsStore.Current, loggerFactory.CreateLogger<GoogleEngine>());
+        var translator = new FailoverTranslator([deepl, google], usage, () => settingsStore.Current, loggerFactory.CreateLogger<FailoverTranslator>());
         var service = new TranslationService(
             new NTextCatLanguageDetector(),
-            new SingleEngineTranslator(deepl),
+            translator,
             () => settingsStore.Current,
             loggerFactory.CreateLogger<TranslationService>());
 
