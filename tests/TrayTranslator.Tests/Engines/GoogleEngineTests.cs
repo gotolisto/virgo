@@ -9,7 +9,7 @@ namespace TrayTranslator.Tests.Engines;
 
 public sealed class GoogleEngineTests : IDisposable
 {
-    private const string Key = "AIzaSy-sample-test-key";
+    private const string Key = "test-google-key";
     private const string OkBody = """{"data":{"translations":[{"translatedText":"Good morning","detectedSourceLanguage":"es"}]}}""";
 
     private readonly TempDirectory _dir = new();

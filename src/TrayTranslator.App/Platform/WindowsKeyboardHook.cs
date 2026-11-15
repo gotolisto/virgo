@@ -101,33 +101,45 @@ internal sealed partial class WindowsKeyboardHook : IHotkeyListener
 
     private unsafe void HookThreadMain(ManualResetEventSlim installed)
     {
-        _hookThreadId = Kernel32.GetCurrentThreadId();
-
-        // Make sure this thread has a message queue before anyone posts WM_QUIT to it.
-        User32.PeekMessage(out _, 0, User32.WM_APP, User32.WM_APP, 0);
-
-        _hook = User32.SetWindowsHookEx(User32.WH_KEYBOARD_LL, &HookCallback, Kernel32.GetModuleHandle(null), 0);
-        if (_hook == 0)
+        try
         {
-            LogInstallFailed(_logger, Marshal.GetLastPInvokeError());
+            _hookThreadId = Kernel32.GetCurrentThreadId();
+
+            // Make sure this thread has a message queue before anyone posts WM_QUIT to it.
+            User32.PeekMessage(out _, 0, User32.WM_APP, User32.WM_APP, 0);
+
+            _hook = User32.SetWindowsHookEx(User32.WH_KEYBOARD_LL, &HookCallback, Kernel32.GetModuleHandle(null), 0);
+            if (_hook == 0)
+            {
+                LogInstallFailed(_logger, Marshal.GetLastPInvokeError());
+            }
+            else
+            {
+                LogInstalled(_logger);
+            }
+
+            installed.Set();
+
+            // Low-level hooks are called through this thread's message loop.
+            while (User32.GetMessage(out _, 0, 0, 0) > 0)
+            {
+            }
         }
-        else
+#pragma warning disable CA1031 // An exception on this raw thread would end the process; log it instead.
+        catch (Exception ex)
+#pragma warning restore CA1031
         {
-            LogInstalled(_logger);
+            LogThreadFailed(_logger, ex);
+            installed.Set();
         }
-
-        installed.Set();
-
-        // Low-level hooks are called through this thread's message loop.
-        while (User32.GetMessage(out _, 0, 0, 0) > 0)
+        finally
         {
-        }
-
-        if (_hook != 0)
-        {
-            User32.UnhookWindowsHookEx(_hook);
-            _hook = 0;
-            LogRemoved(_logger);
+            if (_hook != 0)
+            {
+                User32.UnhookWindowsHookEx(_hook);
+                _hook = 0;
+                LogRemoved(_logger);
+            }
         }
     }
 
@@ -204,6 +216,9 @@ internal sealed partial class WindowsKeyboardHook : IHotkeyListener
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Keyboard hook removed")]
     private static partial void LogRemoved(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Keyboard hook thread failed")]
+    private static partial void LogThreadFailed(ILogger logger, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Ctrl+C+C detected")]
     private static partial void LogTriggered(ILogger logger);

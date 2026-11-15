@@ -51,6 +51,7 @@ internal sealed partial class TranslationController : IDisposable
         _popup.RetryRequested += OnRetryRequested;
         _popup.CopyRequested += OnCopyRequested;
         _popup.OpenSettingsRequested += OnOpenSettingsRequested;
+        _popup.IsVisibleChanged += OnPopupVisibleChanged;
     }
 
     public event EventHandler? OpenSettingsRequested;
@@ -63,6 +64,15 @@ internal sealed partial class TranslationController : IDisposable
         _hotkey.Triggered -= OnTriggered;
         _current?.Cancel();
         _current?.Dispose();
+    }
+
+    private void OnPopupVisibleChanged(object sender, System.Windows.DependencyPropertyChangedEventArgs e)
+    {
+        // Closing the popup (Esc, focus loss, close button) abandons the request in flight.
+        if (e.NewValue is false)
+        {
+            _current?.Cancel();
+        }
     }
 
     private void OnTriggered(object? sender, EventArgs e) =>
