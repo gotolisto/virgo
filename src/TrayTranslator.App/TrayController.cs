@@ -46,6 +46,7 @@ internal sealed class TrayController : IDisposable
         _quit = quit;
         _logger = logger;
         _tray.MenuOpening += OnMenuOpening;
+        _updates.UpdateReady += (_, _) => BuildMenu();
     }
 
     public void Start()
@@ -99,7 +100,9 @@ internal sealed class TrayController : IDisposable
             TrayMenuItem.Separator,
             new TrayMenuItem(UsageLine(), IsEnabled: false),
             TrayMenuItem.Separator,
-            new TrayMenuItem("Check for updates", () => _updates.CheckNowAsync(userInitiated: true).Forget(_logger)),
+            _updates.PendingVersion is { } pending
+                ? new TrayMenuItem($"Install update {pending} and restart", _updates.InstallAndRestart)
+                : new TrayMenuItem("Check for updates", () => _updates.CheckNowAsync(userInitiated: true).Forget(_logger)),
             new TrayMenuItem("About", _openAbout),
             new TrayMenuItem("Quit", _quit),
         ]);

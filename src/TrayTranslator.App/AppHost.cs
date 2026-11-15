@@ -175,6 +175,11 @@ internal sealed partial class AppHost : IDisposable
 
     private void ApplyAutostart(AppSettings s)
     {
+        if (_updates is VelopackUpdateService { IsInstalled: false })
+        {
+            return; // a development build must not register itself to start with Windows
+        }
+
         try
         {
             // Written every start, so the entry follows the exe after an update.
@@ -186,7 +191,7 @@ internal sealed partial class AppHost : IDisposable
         }
     }
 
-    private void Quit()
+    public void Quit()
     {
         LogQuit(_logger);
         _app?.Shutdown();

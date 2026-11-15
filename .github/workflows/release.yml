@@ -1,0 +1,125 @@
+# Builds, tests, packages with Velopack and publishes a GitHub Release when a version tag is pushed.
+#
+#   1. Set <Version> in src/TrayTranslator.App/TrayTranslator.App.csproj (e.g. 0.2.0)
+#   2. Add a "## [0.2.0]" section to CHANGELOG.md
+#   3. git tag v0.2.0 && git push origin v0.2.0
+#
+# Run it by hand (Actions → Release → Run workflow) for a dry run: same build, tests and packaging,
+# nothing published; the installer is attached to the run as an artifact.
+#
+# No secrets are stored for this workflow. GITHUB_TOKEN is the token GitHub issues to every run.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PACK_ID: TrayTranslator
+  PACK_TITLE: Tray Translator
+  APP_PROJECT: src/TrayTranslator.App/TrayTranslator.App.csproj
+  REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Read version from the App project
+        id: version
+        run: |
+          version=$(grep -oE '<Version>[^<]+' "$APP_PROJECT" | sed 's/<Version>//')
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::<Version> '$version' is not MAJOR.MINOR.PATCH"; exit 1
+          fi
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the project version $version"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      - name: Publish (self-contained, win-x64)
+        run: dotnet publish "$APP_PROJECT" -c Release -r win-x64 --self-contained -o artifacts/publish
+
+      - name: Restore vpk
+        run: dotnet tool restore
+
+      - name: Release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p artifacts
+          awk -v v="$VERSION" '/^## \[/ { p = index($0, "[" v "]") > 0; next } p' CHANGELOG.md > artifacts/release-notes.md
+          if [[ ! -s artifacts/release-notes.md ]]; then echo "$PACK_TITLE $VERSION" > artifacts/release-notes.md; fi
+
+      - name: Download the previous release (for delta updates)
+        if: github.ref_type == 'tag'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dotnet vpk download github --repoUrl "$REPO_URL" --token "$GITHUB_TOKEN" --outputDir artifacts/releases \
+            || echo "::warning::No earlier release downloaded; this release has no delta package."
+
+      - name: Package with Velopack
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dotnet vpk pack \
+            --packId "$PACK_ID" \
+            --packVersion "$VERSION" \
+            --packDir artifacts/publish \
+            --mainExe TrayTranslator.exe \
+            --packTitle "$PACK_TITLE" \
+            --packAuthors gotolisto \
+            --icon src/TrayTranslator.App/Assets/app.ico \
+            --shortcuts StartMenuRoot \
+            --runtime win-x64 \
+            --releaseNotes artifacts/release-notes.md \
+            --outputDir artifacts/releases
+
+      - name: Upload to the GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dotnet vpk upload github \
+            --repoUrl "$REPO_URL" \
+            --token "$GITHUB_TOKEN" \
+            --outputDir artifacts/releases \
+            --tag "v$VERSION" \
+            --releaseName "$PACK_TITLE $VERSION" \
+            --publish \
+            --merge
+
+      - name: Keep the packages (dry run)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tray-translator-${{ steps.version.outputs.version }}
+          path: artifacts/releases/
+          retention-days: 7
