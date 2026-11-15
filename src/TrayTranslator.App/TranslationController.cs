@@ -55,6 +55,9 @@ internal sealed partial class TranslationController : IDisposable
 
     public event EventHandler? OpenSettingsRequested;
 
+    /// <summary>Raised after a successful translation (usage numbers have changed).</summary>
+    public event EventHandler? Translated;
+
     public void Dispose()
     {
         _hotkey.Triggered -= OnTriggered;
@@ -131,6 +134,7 @@ internal sealed partial class TranslationController : IDisposable
             case TranslationOutcome.Success s:
                 _shownDirection = s.Direction;
                 _popup.ShowTranslation(PopupText.Direction(s.ShownSource, s.Direction.Target), s.Text, s.Notice);
+                Translated?.Invoke(this, EventArgs.Empty);
                 break;
 
             case TranslationOutcome.Failure f:

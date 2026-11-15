@@ -1,0 +1,39 @@
+<Window x:Class="TrayTranslator.App.Ui.FirstRunWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:TrayTranslator.App.Ui"
+        Title="Welcome to Tray Translator"
+        Width="500" SizeToContent="Height"
+        ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True" Icon="pack://application:,,,/Assets/app.ico">
+  <StackPanel Margin="24,20,24,20">
+    <TextBlock FontSize="20" FontWeight="SemiBold" Text="Translate anything with Ctrl+C+C" />
+    <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.8"
+               Text="Select text in any app, hold Ctrl and press C twice. The translation appears next to the cursor." />
+
+    <TextBlock Margin="0,20,0,0" FontWeight="SemiBold" Text="Your two languages" />
+    <Grid Margin="0,6,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <ComboBox x:Name="LanguageA" Grid.Column="0" DisplayMemberPath="Name" SelectedValuePath="Code" />
+      <TextBlock Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Text="⇄" />
+      <ComboBox x:Name="LanguageB" Grid.Column="2" DisplayMemberPath="Name" SelectedValuePath="Code" />
+    </Grid>
+
+    <TextBlock Margin="0,20,0,0" FontWeight="SemiBold" Text="At least one API key" />
+    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12" Opacity="0.75"
+               Text="Both services have a free monthly allowance. With two keys, the second takes over when the first runs out. Keys are stored encrypted for your Windows account." />
+    <ui:ApiKeyField x:Name="DeepLKey" Margin="0,12,0,0" />
+    <ui:ApiKeyField x:Name="GoogleKey" Margin="0,14,0,0" />
+
+    <DockPanel Margin="0,24,0,0">
+      <TextBlock x:Name="HintText" DockPanel.Dock="Left" VerticalAlignment="Center" FontSize="12" Opacity="0.75"
+                 Text="Test a key to continue." />
+      <Button x:Name="FinishButton" DockPanel.Dock="Right" HorizontalAlignment="Right" MinWidth="120"
+              Content="Start translating" IsDefault="True" IsEnabled="False" Click="OnFinishClick" />
+    </DockPanel>
+  </StackPanel>
+</Window>

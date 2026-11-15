@@ -1,0 +1,88 @@
+<Window x:Class="TrayTranslator.App.Ui.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:TrayTranslator.App.Ui"
+        Title="Tray Translator Settings"
+        Width="520" SizeToContent="Height" MaxHeight="820"
+        ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True" Icon="pack://application:,,,/Assets/app.ico">
+
+  <Window.Resources>
+    <Style x:Key="Section" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,18,0,8" />
+    </Style>
+    <Style x:Key="Hint" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Opacity" Value="0.75" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+  </Window.Resources>
+
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Padding="20,12">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <TextBlock x:Name="ErrorText" Foreground="IndianRed" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" MaxWidth="260" />
+        <Button Content="Save" MinWidth="88" IsDefault="True" Click="OnSaveClick" />
+        <Button Content="Cancel" MinWidth="88" Margin="8,0,0,0" IsCancel="True" Click="OnCancelClick" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="20,0,20,8">
+
+        <TextBlock Style="{StaticResource Section}" Text="Languages" />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <StackPanel Grid.Column="0">
+            <TextBlock Text="Language A" />
+            <ComboBox x:Name="LanguageA" Margin="0,4,0,0" DisplayMemberPath="Name" SelectedValuePath="Code" />
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+            <TextBlock Text="Language B" />
+            <ComboBox x:Name="LanguageB" Margin="0,4,0,0" DisplayMemberPath="Name" SelectedValuePath="Code" />
+          </StackPanel>
+        </Grid>
+        <TextBlock Style="{StaticResource Hint}" Text="A becomes B and B becomes A. Text in any other language is translated into Language A." />
+
+        <TextBlock Style="{StaticResource Section}" Text="Engines" />
+        <TextBlock Text="Default engine" />
+        <ComboBox x:Name="DefaultEngine" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="160" />
+        <TextBlock Style="{StaticResource Hint}" Text="The other engine takes over when the default one has used its monthly allowance." />
+
+        <ui:ApiKeyField x:Name="DeepLKey" Margin="0,14,0,0" />
+        <ui:ApiKeyField x:Name="GoogleKey" Margin="0,14,0,0" />
+
+        <TextBlock Margin="0,14,0,0" Text="Google monthly ceiling (characters)" />
+        <TextBox x:Name="GoogleCeiling" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="160" />
+        <TextBlock Style="{StaticResource Hint}"
+                   Text="Google's free allowance is 500,000 characters a month and it bills beyond that. The app stops using Google at this ceiling." />
+        <CheckBox x:Name="AllowPaidUsage" Margin="0,10,0,0" Content="Allow paid usage (keep using Google past the ceiling)" />
+
+        <TextBlock Style="{StaticResource Section}" Text="Shortcut" />
+        <TextBlock Text="Ctrl+C+C: press C twice while holding Ctrl" />
+        <DockPanel Margin="0,8,0,0">
+          <TextBlock x:Name="IntervalText" DockPanel.Dock="Right" Width="64" TextAlignment="Right" VerticalAlignment="Center" />
+          <Slider x:Name="Interval" Minimum="300" Maximum="800" TickFrequency="50" IsSnapToTickEnabled="True"
+                  TickPlacement="BottomRight" ValueChanged="OnIntervalChanged" />
+        </DockPanel>
+        <TextBlock Style="{StaticResource Hint}" Text="Longest pause allowed between the two presses." />
+
+        <TextBlock Margin="0,14,0,0" Text="Maximum text length (characters)" />
+        <TextBox x:Name="MaxTextLength" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="160" />
+
+        <TextBlock Style="{StaticResource Section}" Text="General" />
+        <CheckBox x:Name="StartWithWindows" Content="Start with Windows" />
+        <CheckBox x:Name="CheckForUpdates" Margin="0,8,0,0" Content="Check for updates automatically" />
+        <TextBlock Margin="0,12,0,0" Text="Theme" />
+        <ComboBox x:Name="Theme" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="160" />
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>
