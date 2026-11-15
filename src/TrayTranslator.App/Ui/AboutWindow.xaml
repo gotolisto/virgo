@@ -1,0 +1,18 @@
+<Window x:Class="TrayTranslator.App.Ui.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About Tray Translator"
+        SizeToContent="WidthAndHeight" ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="True" Icon="pack://application:,,,/Assets/app.ico">
+  <StackPanel Margin="28,24" MinWidth="300">
+    <Image Source="pack://application:,,,/Assets/app.ico" Width="48" Height="48" HorizontalAlignment="Left" />
+    <TextBlock x:Name="NameText" Margin="0,12,0,0" FontSize="18" FontWeight="SemiBold" />
+    <TextBlock x:Name="VersionText" Margin="0,4,0,0" Opacity="0.8" />
+    <TextBlock Margin="0,12,0,0">
+      <Hyperlink x:Name="RepoLink" Click="OnRepoClick"><Run x:Name="RepoText" /></Hyperlink>
+    </TextBlock>
+    <TextBlock Margin="0,12,0,0" FontSize="12" Opacity="0.75" TextWrapping="Wrap" MaxWidth="320"
+               Text="Selected text goes only to the engine you chose, over HTTPS. No history, no telemetry." />
+    <Button Margin="0,20,0,0" HorizontalAlignment="Right" MinWidth="88" Content="Close" IsCancel="True" IsDefault="True" Click="OnCloseClick" />
+  </StackPanel>
+</Window>

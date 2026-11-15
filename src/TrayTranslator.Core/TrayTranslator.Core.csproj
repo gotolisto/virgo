@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Core must stay free of WPF and Windows references so another platform can reuse it. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>TrayTranslator.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- NTextCat's 14-language profile (MIT), embedded from the package so detection needs no files on disk. -->
+    <EmbeddedResource Include="$(PkgNTextCat)/content/Core14.profile.xml" LogicalName="TrayTranslator.Core.Detection.Core14.profile.xml" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TrayTranslator.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
+    <PackageReference Include="NTextCat" Version="0.3.65" GeneratePathProperty="true" />
+  </ItemGroup>
+
+</Project>
