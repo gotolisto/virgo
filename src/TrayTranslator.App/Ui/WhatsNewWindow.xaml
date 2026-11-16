@@ -1,0 +1,16 @@
+<Window x:Class="TrayTranslator.App.Ui.WhatsNewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="What's new in Tray Translator"
+        Width="560" Height="600" MinWidth="420" MinHeight="320"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="True"
+        Icon="pack://application:,,,/Assets/app.ico">
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Padding="20,12">
+      <Button HorizontalAlignment="Right" MinWidth="88" Content="Close" IsCancel="True" IsDefault="True" Click="OnCloseClick" />
+    </Border>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel x:Name="Entries" Margin="24,16,24,8" />
+    </ScrollViewer>
+  </DockPanel>
+</Window>

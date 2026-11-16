@@ -58,6 +58,12 @@ public sealed record AppSettings
     /// </summary>
     public bool ReplaceAutomatically { get; init; }
 
+    /// <summary>
+    /// The app version the user last ran. When the running version is newer, the app has just been updated
+    /// and offers its What's new notes.
+    /// </summary>
+    public string? LastSeenVersion { get; init; }
+
     /// <summary>False until the first-run window has been completed.</summary>
     public bool FirstRunCompleted { get; init; }
 
