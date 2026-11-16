@@ -8,7 +8,7 @@ Versions follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH): 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 **Rule for every change:** add a line under *Unreleased* in the same pull request. To release, see
-"Releasing" in the README.
+"Versions and releasing" in the README.
 
 ## [Unreleased]
 
