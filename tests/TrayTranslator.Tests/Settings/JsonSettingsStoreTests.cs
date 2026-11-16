@@ -32,6 +32,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
             StartWithWindows = false,
             Theme = ThemePreference.Dark,
             CheckForUpdatesAutomatically = false,
+            ReplaceAutomatically = true,
             FirstRunCompleted = true,
         };
 
@@ -39,6 +40,18 @@ public sealed class JsonSettingsStoreTests : IDisposable
         var loaded = new JsonSettingsStore(path).Load();
 
         Assert.Equal(saved, loaded);
+    }
+
+    [Fact]
+    public void Settings_written_before_replace_existed_load_with_replace_off()
+    {
+        var path = _dir.File("settings.json");
+        File.WriteAllText(path, """{ "languageA": "en", "languageB": "es", "firstRunCompleted": true }""");
+
+        var loaded = new JsonSettingsStore(path).Load();
+
+        Assert.False(loaded.ReplaceAutomatically);
+        Assert.True(loaded.FirstRunCompleted);
     }
 
     [Fact]

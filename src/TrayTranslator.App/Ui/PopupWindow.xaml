@@ -128,6 +128,8 @@
       <!-- Footer buttons -->
       <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,4,0">
         <Button x:Name="ActionButton" Style="{StaticResource TextButton}" Visibility="Collapsed" Click="OnActionClick" />
+        <Button x:Name="ReplaceButton" Style="{StaticResource TextButton}" Margin="8,0,0,0" Content="Replace"
+                ToolTip="Paste the translation over the text you selected" Visibility="Collapsed" Click="OnReplaceClick" />
         <Button x:Name="CopyButton" Style="{StaticResource AccentButton}" Margin="8,0,0,0" Content="Copy"
                 Visibility="Collapsed" Click="OnCopyClick" />
       </StackPanel>

@@ -19,6 +19,7 @@ public class AppSettingsTests
         Assert.True(s.StartWithWindows);
         Assert.Equal(ThemePreference.System, s.Theme);
         Assert.True(s.CheckForUpdatesAutomatically);
+        Assert.False(s.ReplaceAutomatically);
         Assert.False(s.FirstRunCompleted);
     }
 

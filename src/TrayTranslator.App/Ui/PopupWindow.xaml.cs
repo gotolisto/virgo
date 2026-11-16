@@ -45,6 +45,9 @@ public partial class PopupWindow : Window
     /// <summary>Raised with the text to put on the clipboard when Copy is pressed.</summary>
     public event EventHandler<string>? CopyRequested;
 
+    /// <summary>Raised with the translation when Replace is pressed (after the popup has hidden itself).</summary>
+    public event EventHandler<string>? ReplaceRequested;
+
     private nint Handle => new WindowInteropHelper(this).Handle;
 
     /// <summary>Shows the spinner at <paramref name="cursor"/>.</summary>
@@ -57,7 +60,9 @@ public partial class PopupWindow : Window
         ShowAt(cursor);
     }
 
-    public void ShowTranslation(string direction, string text, string? notice)
+    /// <param name="canReplace">Show the Replace button (there is a window to paste into).</param>
+    /// <param name="cursor">Show the popup at this point first; null when it is already showing.</param>
+    public void ShowTranslation(string direction, string text, string? notice, bool canReplace, ScreenPoint? cursor = null)
     {
         DirectionText.Text = direction;
         SetNotice(notice);
@@ -66,7 +71,12 @@ public partial class PopupWindow : Window
         SetBody(result: true);
         SwapButton.IsEnabled = true;
         CopyButton.Visibility = Visibility.Visible;
+        ReplaceButton.Visibility = canReplace ? Visibility.Visible : Visibility.Collapsed;
         SetAction(PopupAction.None, null);
+        if (cursor is { } point)
+        {
+            ShowAt(point);
+        }
     }
 
     public void ShowMessage(ScreenPoint? cursor, string direction, string message, PopupAction action, string? actionLabel, bool canSwap)
@@ -77,6 +87,7 @@ public partial class PopupWindow : Window
         SetBody(message: true);
         SwapButton.IsEnabled = canSwap;
         CopyButton.Visibility = Visibility.Collapsed;
+        ReplaceButton.Visibility = Visibility.Collapsed;
         SetAction(action, actionLabel);
         if (cursor is { } point)
         {
@@ -143,6 +154,7 @@ public partial class PopupWindow : Window
         if (loading)
         {
             CopyButton.Visibility = Visibility.Collapsed;
+            ReplaceButton.Visibility = Visibility.Collapsed;
             SetAction(PopupAction.None, null);
             SpinnerRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, _spin);
         }
@@ -182,6 +194,15 @@ public partial class PopupWindow : Window
     {
         CopyRequested?.Invoke(this, ResultText.Text);
         HideAndReset();
+    }
+
+    private void OnReplaceClick(object sender, RoutedEventArgs e)
+    {
+        var text = ResultText.Text;
+
+        // Hide first, so the original window can take focus back.
+        HideAndReset();
+        ReplaceRequested?.Invoke(this, text);
     }
 
     private void OnActionClick(object sender, RoutedEventArgs e)

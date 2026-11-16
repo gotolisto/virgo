@@ -84,6 +84,9 @@ internal sealed partial class AppHost : IDisposable
         _hook = new WindowsKeyboardHook(settings.DoublePressInterval, _loggers.CreateLogger<WindowsKeyboardHook>());
         _controller = new TranslationController(
             _app.Dispatcher, _hook, new ClipboardTextFetcher(new WindowsClipboardReader()), locator, _service, popup,
+            new WindowsTextReplacer(_loggers.CreateLogger<WindowsTextReplacer>()),
+            () => _settings.Current,
+            message => _tray?.ShowNotification(AppInfo.Name, message),
             _loggers.CreateLogger<TranslationController>());
         _controller.OpenSettingsRequested += (_, _) => OpenSettings();
 

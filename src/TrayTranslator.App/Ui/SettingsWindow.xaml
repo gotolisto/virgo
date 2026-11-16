@@ -74,6 +74,10 @@
         </DockPanel>
         <TextBlock Style="{StaticResource Hint}" Text="Longest pause allowed between the two presses." />
 
+        <CheckBox x:Name="ReplaceAutomatically" Margin="0,12,0,0" Content="Replace the selected text automatically (no popup)" />
+        <TextBlock Style="{StaticResource Hint}"
+                   Text="Ctrl+C+C pastes the translation over your selection. The popup only appears for errors, or when the window does not accept the paste." />
+
         <TextBlock Margin="0,14,0,0" Text="Maximum text length (characters)" />
         <TextBox x:Name="MaxTextLength" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="160" />
 

@@ -21,6 +21,8 @@ First release.
   allowance. "Allow paid usage" lifts the limit.
 - Popup with a swap button, Copy, and clear messages for no connection, a bad key, rate limits and
   exhausted allowances.
+- Replace button that pastes the translation over the selected text in the original window and then
+  puts the user's clipboard back. Optional setting to replace automatically on Ctrl+C+C, with no popup.
 - Tray menu with Settings, Pause hotkey, characters used this month, Check for updates, About and Quit.
 - Settings window, and a first-run window that asks for the languages and tests a key.
 - API keys stored encrypted with Windows DPAPI for the current user.

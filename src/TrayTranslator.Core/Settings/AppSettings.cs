@@ -46,6 +46,12 @@ public sealed record AppSettings
 
     public bool CheckForUpdatesAutomatically { get; init; } = true;
 
+    /// <summary>
+    /// When on, Ctrl+C+C pastes the translation over the selected text without showing the popup.
+    /// The popup still appears for errors, text that is too long, or when the paste is not possible.
+    /// </summary>
+    public bool ReplaceAutomatically { get; init; }
+
     /// <summary>False until the first-run window has been completed.</summary>
     public bool FirstRunCompleted { get; init; }
 

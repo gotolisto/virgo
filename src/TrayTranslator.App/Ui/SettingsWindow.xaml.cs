@@ -50,6 +50,7 @@ public partial class SettingsWindow : Window
         Interval.Value = s.DoublePressIntervalMs;
         MaxTextLength.Text = s.MaxTextLength.ToString(CultureInfo.CurrentCulture);
         StartWithWindows.IsChecked = s.StartWithWindows;
+        ReplaceAutomatically.IsChecked = s.ReplaceAutomatically;
         CheckForUpdates.IsChecked = s.CheckForUpdatesAutomatically;
     }
 
@@ -110,6 +111,7 @@ public partial class SettingsWindow : Window
             DoublePressIntervalMs = (int)Interval.Value,
             MaxTextLength = maxLength,
             StartWithWindows = StartWithWindows.IsChecked == true,
+            ReplaceAutomatically = ReplaceAutomatically.IsChecked == true,
             CheckForUpdatesAutomatically = CheckForUpdates.IsChecked == true,
             Theme = Theme.SelectedValue is ThemePreference theme ? theme : ThemePreference.System,
         });

@@ -183,6 +183,12 @@ public class TranslationServiceTests
     }
 
     [Fact]
+    public void Replace_failure_message_points_to_copy()
+    {
+        Assert.Contains("Copy", PopupText.ReplaceFailed, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Too_long_message_includes_the_limit()
     {
         Assert.Equal("Too long: the limit is 5,000 characters", PopupText.TooLong(5000));

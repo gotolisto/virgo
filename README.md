@@ -18,10 +18,19 @@ translation appears in a popup next to the cursor.
 | Translate | Select text, hold Ctrl, press C twice quickly (within 0.5 s by default) |
 | Translate the other way | The ⇄ button in the popup header |
 | Copy the translation | **Copy** (closes the popup) |
+| Put the translation in place of your selection | **Replace** (pastes over the text you selected, then puts your clipboard back) |
+| Always replace, with no popup | Settings → *Replace the selected text automatically* |
 | Close the popup | Esc, the ✕ button, or click elsewhere |
 | Settings, pause, usage, updates | Right-click the tray icon |
 
 A single Ctrl+C is always a normal copy. Holding Ctrl+C down never opens the popup.
+
+**Replace** works in any window that accepts Ctrl+V. The app puts the translation on the clipboard, returns
+to the window you selected the text in, presses Ctrl+V for you once you have let go of Ctrl, and then puts
+your copied text back on the clipboard. Windows does not allow it to type into a program running as
+administrator. In that case, and whenever the paste is not possible, the popup appears with the translation
+so you can use Copy. With automatic replace on, the popup also appears for errors and for text that is too
+long, and "Switched to …" shows as a notification.
 
 ## Getting API keys
 

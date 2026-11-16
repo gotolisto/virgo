@@ -155,7 +155,8 @@ internal sealed partial class WindowsKeyboardHook : IHotkeyListener
                 var message = (int)wParam;
                 var isDown = message is User32.WM_KEYDOWN or User32.WM_SYSKEYDOWN;
                 var isUp = message is User32.WM_KEYUP or User32.WM_SYSKEYUP;
-                if (isDown || isUp)
+                var ours = (data->flags & User32.LLKHF_INJECTED) != 0 && data->dwExtraInfo == User32.InjectedMarker;
+                if ((isDown || isUp) && !ours)
                 {
                     var kind = data->vkCode switch
                     {
