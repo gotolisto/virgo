@@ -195,6 +195,39 @@ public class TranslationServiceTests
     }
 
     [Fact]
+    public async Task A_picked_language_is_never_redirected()
+    {
+        // The user picked English; the engine says the text is English. Translate to English anyway.
+        var translator = new ScriptedTranslator().Answer("Hello", detected: Lang.En);
+
+        var outcome = await Service(DetectionResult.Unknown, translator)
+            .TranslateAsync("Hello", new TranslationDirection(null, Lang.En), CancellationToken.None);
+
+        Assert.IsType<TranslationOutcome.Success>(outcome);
+        Assert.Single(translator.Calls);
+    }
+
+    [Fact]
+    public void Language_choices_are_A_B_then_extras()
+    {
+        var settings = new AppSettings { LanguageA = "en", LanguageB = "es", ExtraLanguages = new LanguageList(["fr", "de"]) }.Normalize();
+
+        var choices = Service(DetectionResult.Unknown, new ScriptedTranslator(), settings).LanguageChoices();
+
+        Assert.Equal(["en", "es", "fr", "de"], choices.Select(l => l.Code));
+    }
+
+    [Fact]
+    public void Language_choices_skip_unknown_extras()
+    {
+        var settings = new AppSettings { ExtraLanguages = new LanguageList(["xx", "it"]) };
+
+        var choices = Service(DetectionResult.Unknown, new ScriptedTranslator(), settings).LanguageChoices();
+
+        Assert.Equal(["en", "es", "it"], choices.Select(l => l.Code));
+    }
+
+    [Fact]
     public void Unknown_language_codes_in_settings_fall_back_to_the_defaults()
     {
         var (a, b) = Service(DetectionResult.Unknown, new ScriptedTranslator(), new AppSettings { LanguageA = "xx", LanguageB = "yy" }).LanguagePair();

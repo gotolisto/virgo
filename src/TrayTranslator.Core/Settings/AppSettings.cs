@@ -28,6 +28,12 @@ public sealed record AppSettings
     /// <summary>ISO 639-1 code, lower case.</summary>
     public string LanguageB { get; init; } = DefaultLanguageB;
 
+    /// <summary>
+    /// More target languages offered in the popup's language menu, besides A and B (ISO 639-1 codes).
+    /// They never change the automatic A/B direction.
+    /// </summary>
+    public LanguageList ExtraLanguages { get; init; } = LanguageList.Empty;
+
     public EngineId DefaultEngine { get; init; } = EngineId.DeepL;
 
     public int DoublePressIntervalMs { get; init; } = DefaultDoublePressIntervalMs;
@@ -75,6 +81,7 @@ public sealed record AppSettings
             SchemaVersion = CurrentSchemaVersion,
             LanguageA = a,
             LanguageB = b,
+            ExtraLanguages = NormalizeExtras(ExtraLanguages, a, b),
             DefaultEngine = Enum.IsDefined(DefaultEngine) ? DefaultEngine : EngineId.DeepL,
             DoublePressIntervalMs = Math.Clamp(DoublePressIntervalMs, MinDoublePressIntervalMs, MaxDoublePressIntervalMs),
             MaxTextLength = Math.Clamp(MaxTextLength, MinMaxTextLength, MaxMaxTextLength),
@@ -82,6 +89,14 @@ public sealed record AppSettings
             Theme = Enum.IsDefined(Theme) ? Theme : ThemePreference.System,
         };
     }
+
+    /// <summary>Known codes only, lower case, no duplicates, without A and B, in the order given.</summary>
+    private static LanguageList NormalizeExtras(LanguageList? extras, string a, string b) => new(
+        (extras ?? LanguageList.Empty)
+            .Select(code => code?.Trim().ToLowerInvariant())
+            .OfType<string>()
+            .Where(code => code != a && code != b && Languages.LanguageCatalog.IsSupported(code))
+            .Distinct(StringComparer.Ordinal));
 
     private static string NormalizeLanguage(string? code, string fallback)
     {

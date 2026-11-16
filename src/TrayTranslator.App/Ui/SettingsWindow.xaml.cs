@@ -26,6 +26,16 @@ public partial class SettingsWindow : Window
             new Choice<ThemePreference>("Dark", ThemePreference.Dark),
         };
 
+        foreach (var language in LanguageCatalog.All)
+        {
+            ExtraLanguages.Items.Add(new System.Windows.Controls.CheckBox
+            {
+                Content = language.Name,
+                Tag = language.Code,
+                Margin = new Thickness(0, 2, 8, 2),
+            });
+        }
+
         DefaultEngine.SelectedValuePath = Theme.SelectedValuePath = "Value";
         DefaultEngine.DisplayMemberPath = Theme.DisplayMemberPath = "Label";
 
@@ -51,8 +61,15 @@ public partial class SettingsWindow : Window
         MaxTextLength.Text = s.MaxTextLength.ToString(CultureInfo.CurrentCulture);
         StartWithWindows.IsChecked = s.StartWithWindows;
         ReplaceAutomatically.IsChecked = s.ReplaceAutomatically;
+        foreach (var box in ExtraLanguageBoxes)
+        {
+            box.IsChecked = s.ExtraLanguages.Contains((string)box.Tag);
+        }
         CheckForUpdates.IsChecked = s.CheckForUpdatesAutomatically;
     }
+
+    private IEnumerable<System.Windows.Controls.CheckBox> ExtraLanguageBoxes =>
+        ExtraLanguages.Items.OfType<System.Windows.Controls.CheckBox>();
 
     private void OnCancelClick(object sender, RoutedEventArgs e) => Close();
 
@@ -112,6 +129,7 @@ public partial class SettingsWindow : Window
             MaxTextLength = maxLength,
             StartWithWindows = StartWithWindows.IsChecked == true,
             ReplaceAutomatically = ReplaceAutomatically.IsChecked == true,
+            ExtraLanguages = new LanguageList(ExtraLanguageBoxes.Where(box => box.IsChecked == true).Select(box => (string)box.Tag)),
             CheckForUpdatesAutomatically = CheckForUpdates.IsChecked == true,
             Theme = Theme.SelectedValue is ThemePreference theme ? theme : ThemePreference.System,
         });

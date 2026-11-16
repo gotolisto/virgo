@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using TrayTranslator.App.Infrastructure;
 using TrayTranslator.App.Ui;
 using TrayTranslator.Core.Clipboard;
+using TrayTranslator.Core.Languages;
 using TrayTranslator.Core.Platform;
 using TrayTranslator.Core.Translation;
 
@@ -32,7 +33,7 @@ internal sealed partial class TranslationController : IDisposable
     private readonly ILogger _logger;
 
     private FocusTarget _target;
-    private string _shownHeader = string.Empty;
+    private Language? _shownSource;
 
     private CancellationTokenSource? _current;
     private string? _text;
@@ -68,6 +69,7 @@ internal sealed partial class TranslationController : IDisposable
         _popup.RetryRequested += OnRetryRequested;
         _popup.CopyRequested += OnCopyRequested;
         _popup.ReplaceRequested += OnReplaceRequested;
+        _popup.TargetPicked += OnTargetPicked;
         _popup.OpenSettingsRequested += OnOpenSettingsRequested;
         _popup.IsVisibleChanged += OnPopupVisibleChanged;
     }
@@ -123,11 +125,13 @@ internal sealed partial class TranslationController : IDisposable
         _anchor = cursor;
         _target = target;
         _shownDirection = null;
+        _shownSource = null;
+        _popup.SetChoices(_service.LanguageChoices());
 
         if (_service.IsTooLong(text, out var limit))
         {
             LogTooLong(_logger, text.Length, limit);
-            _popup.ShowMessage(cursor, string.Empty, PopupText.TooLong(limit), PopupAction.None, null, canSwap: false);
+            _popup.ShowMessage(cursor, null, PopupText.TooLong(limit), PopupAction.None, null, canSwap: false);
             return;
         }
 
@@ -162,7 +166,7 @@ internal sealed partial class TranslationController : IDisposable
         {
             case TranslationOutcome.Success s:
                 _shownDirection = s.Direction;
-                _shownHeader = PopupText.Direction(s.ShownSource, s.Direction.Target);
+                _shownSource = s.ShownSource;
                 Translated?.Invoke(this, EventArgs.Empty);
                 if (s.Notice is { } notice)
                 {
@@ -175,11 +179,11 @@ internal sealed partial class TranslationController : IDisposable
             case TranslationOutcome.Failure f:
                 _shownDirection = f.Direction;
                 var message = PopupText.For(f);
-                _popup.ShowMessage(_anchor, PopupText.Direction(f.Direction.Source, f.Direction.Target), message.Message, message.Action, message.ActionLabel, canSwap: true);
+                _popup.ShowMessage(_anchor, f.Direction, message.Message, message.Action, message.ActionLabel, canSwap: true);
                 break;
 
             case TranslationOutcome.TooLong t:
-                _popup.ShowMessage(_anchor, string.Empty, PopupText.TooLong(t.Limit), PopupAction.None, null, canSwap: false);
+                _popup.ShowMessage(_anchor, null, PopupText.TooLong(t.Limit), PopupAction.None, null, canSwap: false);
                 break;
         }
     }
@@ -189,9 +193,9 @@ internal sealed partial class TranslationController : IDisposable
     {
         // Not tied to the request token: hiding the popup cancels that, and Replace hides the popup first.
         var replaced = await _replacer.ReplaceSelectionAsync(_target, translation, _text, CancellationToken.None);
-        if (!replaced)
+        if (!replaced && _shownDirection is { } shown)
         {
-            _popup.ShowTranslation(_shownHeader, translation, PopupText.ReplaceFailed, canReplace: false, cursor: _anchor);
+            _popup.ShowTranslation(_shownSource, shown.Target, translation, PopupText.ReplaceFailed, canReplace: false, cursor: _anchor);
         }
     }
 
@@ -203,8 +207,7 @@ internal sealed partial class TranslationController : IDisposable
         }
 
         _forced = forced;
-        var header = forced is null ? "…" : PopupText.Direction(forced.Source, forced.Target);
-        _popup.ShowLoading(_anchor, header);
+        _popup.ShowLoading(_anchor, forced);
 
         TranslationOutcome outcome;
         try
@@ -225,19 +228,19 @@ internal sealed partial class TranslationController : IDisposable
         {
             case TranslationOutcome.Success s:
                 _shownDirection = s.Direction;
-                _shownHeader = PopupText.Direction(s.ShownSource, s.Direction.Target);
-                _popup.ShowTranslation(_shownHeader, s.Text, s.Notice, canReplace: !_target.IsNone);
+                _shownSource = s.ShownSource;
+                _popup.ShowTranslation(s.ShownSource, s.Direction.Target, s.Text, s.Notice, canReplace: !_target.IsNone);
                 Translated?.Invoke(this, EventArgs.Empty);
                 break;
 
             case TranslationOutcome.Failure f:
                 _shownDirection = f.Direction;
                 var message = PopupText.For(f);
-                _popup.ShowMessage(null, PopupText.Direction(f.Direction.Source, f.Direction.Target), message.Message, message.Action, message.ActionLabel, canSwap: true);
+                _popup.ShowMessage(null, f.Direction, message.Message, message.Action, message.ActionLabel, canSwap: true);
                 break;
 
             case TranslationOutcome.TooLong t:
-                _popup.ShowMessage(null, string.Empty, PopupText.TooLong(t.Limit), PopupAction.None, null, canSwap: false);
+                _popup.ShowMessage(null, null, PopupText.TooLong(t.Limit), PopupAction.None, null, canSwap: false);
                 break;
         }
     }
@@ -261,6 +264,10 @@ internal sealed partial class TranslationController : IDisposable
         var swapped = DirectionResolver.Swap(_shownDirection, a, b);
         RunAsync(swapped, Restart()).Forget(_logger);
     }
+
+    /// <summary>A language picked in the popup's menu: same text, that target, this popup only.</summary>
+    private void OnTargetPicked(object? sender, Language target) =>
+        RunAsync(DirectionResolver.ToTarget(_shownSource ?? _shownDirection?.Source, target), Restart()).Forget(_logger);
 
     private void OnRetryRequested(object? sender, EventArgs e) => RunAsync(_forced, Restart()).Forget(_logger);
 

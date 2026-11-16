@@ -23,6 +23,8 @@ First release.
   exhausted allowances.
 - Replace button that pastes the translation over the selected text in the original window and then
   puts the user's clipboard back. Optional setting to replace automatically on Ctrl+C+C, with no popup.
+- Language menu in the popup header: translate the same text into Language A, Language B or any extra
+  language chosen in Settings. The pick applies to that popup only.
 - Tray menu with Settings, Pause hotkey, characters used this month, Check for updates, About and Quit.
 - Settings window, and a first-run window that asks for the languages and tests a key.
 - API keys stored encrypted with Windows DPAPI for the current user.

@@ -33,6 +33,7 @@ public sealed class JsonSettingsStoreTests : IDisposable
             Theme = ThemePreference.Dark,
             CheckForUpdatesAutomatically = false,
             ReplaceAutomatically = true,
+            ExtraLanguages = new LanguageList(["it", "pt"]),
             FirstRunCompleted = true,
         };
 
@@ -51,7 +52,28 @@ public sealed class JsonSettingsStoreTests : IDisposable
         var loaded = new JsonSettingsStore(path).Load();
 
         Assert.False(loaded.ReplaceAutomatically);
+        Assert.Empty(loaded.ExtraLanguages);
         Assert.True(loaded.FirstRunCompleted);
+    }
+
+    [Fact]
+    public void Extra_languages_are_stored_as_a_json_array()
+    {
+        var path = _dir.File("settings.json");
+        new JsonSettingsStore(path).Save(new AppSettings { ExtraLanguages = new LanguageList(["fr", "de"]) });
+
+        var json = File.ReadAllText(path);
+        Assert.Contains("\"extraLanguages\": [", json, StringComparison.Ordinal);
+        Assert.Contains("\"fr\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Null_extra_languages_in_the_file_load_as_empty()
+    {
+        var path = _dir.File("settings.json");
+        File.WriteAllText(path, """{ "extraLanguages": null }""");
+
+        Assert.Empty(new JsonSettingsStore(path).Load().ExtraLanguages);
     }
 
     [Fact]

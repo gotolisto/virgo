@@ -20,6 +20,7 @@ public class AppSettingsTests
         Assert.Equal(ThemePreference.System, s.Theme);
         Assert.True(s.CheckForUpdatesAutomatically);
         Assert.False(s.ReplaceAutomatically);
+        Assert.Empty(s.ExtraLanguages);
         Assert.False(s.FirstRunCompleted);
     }
 
@@ -72,6 +73,31 @@ public class AppSettingsTests
         var s = new AppSettings { LanguageA = both, LanguageB = both }.Normalize();
         Assert.Equal(both, s.LanguageA);
         Assert.Equal(expectedB, s.LanguageB);
+    }
+
+    [Fact]
+    public void Extra_languages_are_cleaned_up()
+    {
+        var s = new AppSettings
+        {
+            LanguageA = "en",
+            LanguageB = "es",
+            ExtraLanguages = new LanguageList([" FR ", "de", "fr", "en", "es", "xx", "", "it"]),
+        }.Normalize();
+
+        Assert.Equal(new LanguageList(["fr", "de", "it"]), s.ExtraLanguages);
+    }
+
+    [Fact]
+    public void Settings_with_equal_extra_languages_are_equal()
+    {
+        var a = new AppSettings { ExtraLanguages = new LanguageList(["fr", "de"]) };
+        var b = new AppSettings { ExtraLanguages = new LanguageList(["fr", "de"]) };
+        var c = new AppSettings { ExtraLanguages = new LanguageList(["de", "fr"]) };
+
+        Assert.Equal(a, b);
+        Assert.Equal(a.GetHashCode(), b.GetHashCode());
+        Assert.NotEqual(a, c);
     }
 
     [Fact]

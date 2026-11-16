@@ -17,6 +17,7 @@ translation appears in a popup next to the cursor.
 | --- | --- |
 | Translate | Select text, hold Ctrl, press C twice quickly (within 0.5 s by default) |
 | Translate the other way | The ⇄ button in the popup header |
+| Translate into another language | Click the target language in the popup header (e.g. **ES ▾**) and pick one. Add languages under Settings → *More languages*. The next Ctrl+C+C goes back to A ⇄ B. |
 | Copy the translation | **Copy** (closes the popup) |
 | Put the translation in place of your selection | **Replace** (pastes over the text you selected, then puts your clipboard back) |
 | Always replace, with no popup | Settings → *Replace the selected text automatically* |

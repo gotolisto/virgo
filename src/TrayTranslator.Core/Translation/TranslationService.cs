@@ -38,6 +38,14 @@ public sealed partial class TranslationService
         return (a, b);
     }
 
+    /// <summary>The popup's language menu: A, B, then the extra languages from settings.</summary>
+    public IReadOnlyList<Language> LanguageChoices()
+    {
+        var (a, b) = LanguagePair();
+        var extras = _settings().ExtraLanguages.Select(LanguageCatalog.Find).OfType<Language>();
+        return [.. new[] { a, b }.Concat(extras).DistinctBy(l => l.Code)];
+    }
+
     /// <summary>True when the text is over the configured limit (counted in Unicode code points).</summary>
     public bool IsTooLong(string text, out int limit)
     {
@@ -66,8 +74,9 @@ public sealed partial class TranslationService
             var shownSource = direction.Source ?? routed.Translation.DetectedSource;
 
             // Engine detection said the text was already in A (e.g. a short English phrase the local detector
-            // could not call): translate it into B instead, so English text gives Spanish.
-            if (direction.Source is null && shownSource?.Code == direction.Target.Code)
+            // could not call): translate it into B instead, so English text gives Spanish. Only for the automatic
+            // direction: a language the user picked is never overridden.
+            if (forcedDirection is null && direction.Source is null && shownSource?.Code == direction.Target.Code)
             {
                 direction = new TranslationDirection(direction.Target, direction.Target.Code == a.Code ? b : a);
                 var notice = routed.Notice;

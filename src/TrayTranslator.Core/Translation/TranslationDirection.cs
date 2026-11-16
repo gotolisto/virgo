@@ -43,6 +43,17 @@ public static class DirectionResolver
     }
 
     /// <summary>
+    /// The popup's language menu: translate the same text into <paramref name="target"/>. The source stays the
+    /// language the text was shown as, unless it is the target itself, in which case the engine detects it.
+    /// </summary>
+    public static TranslationDirection ToTarget(Language? shownSource, Language target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        var source = shownSource is not null && shownSource.Code != target.Code ? shownSource : null;
+        return new TranslationDirection(source, target);
+    }
+
+    /// <summary>
     /// The swap button: translate the same text the other way round. The old target becomes the source
     /// and the target becomes the other language of the pair.
     /// </summary>
