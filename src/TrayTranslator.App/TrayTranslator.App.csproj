@@ -19,7 +19,7 @@
     <StartupObject>TrayTranslator.App.Program</StartupObject>
 
     <!-- The one place the version lives. MAJOR.MINOR.PATCH. About and the tooltip read it from the assembly. -->
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
 
     <Product>Tray Translator</Product>
     <Company>gotolisto</Company>

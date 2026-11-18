@@ -12,6 +12,14 @@ Versions follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH): 
 
 ## [Unreleased]
 
+## [0.2.2] - Unreleased
+
+### Fixed
+- With "Replace the selected text automatically" on, translating text that cannot be edited (for example
+  on a web page) showed nothing. The app now checks whether the selection can be replaced and, when it
+  cannot, shows the translation in the popup instead.
+- The popup no longer offers **Replace** for text that cannot be edited.
+
 ## [0.2.1] - 2026-11-18
 
 ### Changed

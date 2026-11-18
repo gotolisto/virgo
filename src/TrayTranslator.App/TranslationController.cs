@@ -33,6 +33,7 @@ internal sealed partial class TranslationController : IDisposable
     private readonly ILogger _logger;
 
     private FocusTarget _target;
+    private Task<SelectionEditability> _editability = Task.FromResult(SelectionEditability.Unknown);
     private Language? _shownSource;
 
     private CancellationTokenSource? _current;
@@ -100,8 +101,10 @@ internal sealed partial class TranslationController : IDisposable
 
     private async Task HandleTriggerAsync()
     {
-        // Remember the window the text was selected in before anything of ours can take focus.
+        // Remember the window the text was selected in before anything of ours can take focus, and start asking
+        // it (in the background, alongside the translation) whether the selection can be replaced.
         var target = _replacer.CaptureFocus();
+        var editability = _replacer.ProbeEditabilityAsync(target, CancellationToken.None);
         var cts = Restart();
         var cursor = _cursor.GetCursorPosition();
 
@@ -124,6 +127,7 @@ internal sealed partial class TranslationController : IDisposable
         _text = text;
         _anchor = cursor;
         _target = target;
+        _editability = editability;
         _shownDirection = null;
         _shownSource = null;
         _popup.SetChoices(_service.LanguageChoices());
@@ -168,6 +172,16 @@ internal sealed partial class TranslationController : IDisposable
                 _shownDirection = s.Direction;
                 _shownSource = s.ShownSource;
                 Translated?.Invoke(this, EventArgs.Empty);
+
+                // Text that cannot be edited (a web page, a label): show the translation instead of a paste
+                // that would do nothing.
+                if (!EditabilityRules.CanTryReplace(await _editability))
+                {
+                    LogShownInsteadOfReplaced(_logger);
+                    _popup.ShowTranslation(s.ShownSource, s.Direction.Target, s.Text, s.Notice, canReplace: false, cursor: _anchor);
+                    break;
+                }
+
                 if (s.Notice is { } notice)
                 {
                     _notify(notice);
@@ -229,7 +243,13 @@ internal sealed partial class TranslationController : IDisposable
             case TranslationOutcome.Success s:
                 _shownDirection = s.Direction;
                 _shownSource = s.ShownSource;
-                _popup.ShowTranslation(s.ShownSource, s.Direction.Target, s.Text, s.Notice, canReplace: !_target.IsNone);
+                var canReplace = !_target.IsNone && EditabilityRules.CanTryReplace(await _editability);
+                if (cts.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                _popup.ShowTranslation(s.ShownSource, s.Direction.Target, s.Text, s.Notice, canReplace);
                 Translated?.Invoke(this, EventArgs.Empty);
                 break;
 
@@ -297,6 +317,9 @@ internal sealed partial class TranslationController : IDisposable
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Selection is read-only: showing the translation instead of replacing")]
+    private static partial void LogShownInsteadOfReplaced(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Trigger ignored: no text on the clipboard")]
     private static partial void LogNoText(ILogger logger);

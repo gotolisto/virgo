@@ -30,7 +30,12 @@ A single Ctrl+C is always a normal copy. Holding Ctrl+C down never opens the pop
 to the window you selected the text in, presses Ctrl+V for you once you have let go of Ctrl, and then puts
 your copied text back on the clipboard. Windows does not allow it to type into a program running as
 administrator. In that case, and whenever the paste is not possible, the popup appears with the translation
-so you can use Copy. With automatic replace on, the popup also appears for errors and for text that is too
+so you can use Copy.
+
+Before replacing, the app asks Windows (through its accessibility interface, the one screen readers use)
+whether the selected text can be edited. Text on a web page, a label or a link cannot: there the popup shows
+the translation instead, even with automatic replace on, and the Replace button is hidden. If an app does
+not say, the paste is tried as before. With automatic replace on, the popup also appears for errors and for text that is too
 long, and "Switched to …" shows as a notification.
 
 ## Getting API keys
