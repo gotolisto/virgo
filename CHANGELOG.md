@@ -12,7 +12,7 @@ Versions follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH): 
 
 ## [Unreleased]
 
-## [0.2.1] - Unreleased
+## [0.2.1] - 2026-11-18
 
 ### Changed
 - When Google's daily limit is reached (a limit you can set in the Google Cloud console to stay inside the
