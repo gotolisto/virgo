@@ -98,6 +98,33 @@ internal static partial class User32
         public InputUnion U;
     }
 
+    public const int GWL_STYLE = -16;
+    public const long ES_READONLY = 0x0800;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GUITHREADINFO
+    {
+        public uint cbSize;
+        public uint flags;
+        public nint hwndActive;
+        public nint hwndFocus;
+        public nint hwndCapture;
+        public nint hwndMenuOwner;
+        public nint hwndMoveSize;
+        public nint hwndCaret;
+        public RECT rcCaret;
+    }
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO pgui);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetClassNameW", SetLastError = true)]
+    public static unsafe partial int GetClassName(nint hWnd, char* lpClassName, int nMaxCount);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    public static partial nint GetWindowLongPtr(nint hWnd, int nIndex);
+
     [LibraryImport("user32.dll", SetLastError = true)]
     public static unsafe partial uint SendInput(uint cInputs, INPUT* pInputs, int cbSize);
 

@@ -45,6 +45,43 @@ internal sealed partial class WindowsTextReplacer : ITextReplacer
         return pid == (uint)Environment.ProcessId ? FocusTarget.None : new FocusTarget(hwnd);
     }
 
+    /// <summary>UI Automation can be slow the first time a browser is asked; never wait longer than this.</summary>
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromMilliseconds(800);
+
+    public async Task<SelectionEditability> ProbeEditabilityAsync(FocusTarget target, CancellationToken ct)
+    {
+        if (target.IsNone)
+        {
+            // No other window to paste into (e.g. the text was selected in our own popup).
+            return SelectionEditability.ReadOnly;
+        }
+
+        try
+        {
+            // Accessibility calls go to the other app; keep them off the UI thread.
+            var facts = await Task.Run(() => WindowsEditabilityProbe.Read(target.Handle), ct).WaitAsync(ProbeTimeout, ct);
+            var result = EditabilityRules.Classify(facts);
+            LogProbe(_logger, facts.Kind, facts.SelectionReadOnly, facts.AccessibilityReadOnly, facts.ClassicEditReadOnly, result);
+            return result;
+        }
+        catch (TimeoutException)
+        {
+            LogProbeTimeout(_logger);
+            return SelectionEditability.Unknown;
+        }
+        catch (OperationCanceledException)
+        {
+            return SelectionEditability.Unknown;
+        }
+#pragma warning disable CA1031 // The probe is advisory: any failure means "try the paste, as before".
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogProbeFailed(_logger, ex.GetType().Name);
+            return SelectionEditability.Unknown;
+        }
+    }
+
     public async Task<bool> ReplaceSelectionAsync(FocusTarget target, string replacement, string? clipboardToRestore, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(replacement);
@@ -154,6 +191,15 @@ internal sealed partial class WindowsTextReplacer : ITextReplacer
             },
         },
     };
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Selection editability: {Result} (kind {Kind}, selection read-only {Selection}, control read-only {Control}, classic edit read-only {Classic})")]
+    private static partial void LogProbe(ILogger logger, FocusedControlKind kind, bool? selection, bool? control, bool? classic, SelectionEditability result);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Selection editability: no answer in time; the paste will be tried")]
+    private static partial void LogProbeTimeout(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Selection editability could not be read ({ErrorType}); the paste will be tried")]
+    private static partial void LogProbeFailed(ILogger logger, string errorType);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Replaced the selection in the original window")]
     private static partial void LogReplaced(ILogger logger);

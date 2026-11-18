@@ -20,6 +20,13 @@ public interface ITextReplacer
     FocusTarget CaptureFocus();
 
     /// <summary>
+    /// Asks the focused control in <paramref name="target"/> whether it can take a paste. Start it as soon as the
+    /// gesture fires, while the target still has focus. Never throws: anything it cannot tell is
+    /// <see cref="SelectionEditability.Unknown"/>.
+    /// </summary>
+    Task<SelectionEditability> ProbeEditabilityAsync(FocusTarget target, CancellationToken ct);
+
+    /// <summary>
     /// Brings <paramref name="target"/> back to the foreground and pastes <paramref name="replacement"/> over its
     /// selection. Afterwards the clipboard is set back to <paramref name="clipboardToRestore"/>, so the user's
     /// clipboard ends up as it was. Returns false when the window is gone or would not take focus or input.

@@ -30,7 +30,12 @@ A single Ctrl+C is always a normal copy. Holding Ctrl+C down never opens the pop
 to the window you selected the text in, presses Ctrl+V for you once you have let go of Ctrl, and then puts
 your copied text back on the clipboard. Windows does not allow it to type into a program running as
 administrator. In that case, and whenever the paste is not possible, the popup appears with the translation
-so you can use Copy. With automatic replace on, the popup also appears for errors and for text that is too
+so you can use Copy.
+
+Before replacing, the app asks Windows (through its accessibility interface, the one screen readers use)
+whether the selected text can be edited. Text on a web page, a label or a link cannot: there the popup shows
+the translation instead, even with automatic replace on, and the Replace button is hidden. If an app does
+not say, the paste is tried as before. With automatic replace on, the popup also appears for errors and for text that is too
 long, and "Switched to …" shows as a notification.
 
 ## Getting API keys
@@ -79,6 +84,11 @@ user only (no administrator prompt), adds a Start menu shortcut, and starts the 
 **Windows SmartScreen warning.** The installer is not code-signed yet, so Windows may show *"Windows
 protected your PC"*. Click **More info → Run anyway**. Some browsers also ask you to confirm keeping the
 download.
+
+Already installed? Run the newer `Setup.exe` anyway: it detects the installed version and asks
+"Version 0.2.1 is currently installed. Would you like to update to version 0.2.2?". Click **Update**. There
+is no need to uninstall first. The same version offers **Repair**, an older installer warns before a
+**Downgrade**. Settings and keys are kept either way (log files are cleared).
 
 The app updates itself from GitHub Releases. It checks at startup and every 24 hours, downloads in the
 background, and shows a notification. Click it, or use *Install update and restart* in the tray menu.
