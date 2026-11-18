@@ -131,6 +131,12 @@ public sealed partial class GoogleEngine : ITranslationEngine
 
     private async Task<HttpResponseMessage> SendCountedAsync(Func<HttpRequestMessage> build, int characters, CancellationToken ct)
     {
+        // Google already said no for today: do not spend a request (or count characters) until it resets.
+        if (_usage.IsGoogleDailyLimited)
+        {
+            throw new TranslationException(Id, TranslationErrorKind.DailyLimitReached);
+        }
+
         if (_usage.WouldExceedGoogleCeiling(characters, _settings()))
         {
             throw new TranslationException(Id, TranslationErrorKind.QuotaExceeded);
@@ -160,6 +166,7 @@ public sealed partial class GoogleEngine : ITranslationEngine
         var reasons = error?.Reasons() ?? [];
         var kind = status switch
         {
+            403 or 429 when error?.IsDailyLimit() == true => TranslationErrorKind.DailyLimitReached,
             401 => TranslationErrorKind.BadKey,
             400 when reasons.Contains("API_KEY_INVALID", StringComparer.OrdinalIgnoreCase)
                 || (error?.Message?.Contains("API key", StringComparison.OrdinalIgnoreCase) ?? false) => TranslationErrorKind.BadKey,
@@ -171,6 +178,11 @@ public sealed partial class GoogleEngine : ITranslationEngine
         };
 
         LogHttpError(_logger, status, kind, string.Join(",", reasons));
+        if (kind == TranslationErrorKind.DailyLimitReached)
+        {
+            _usage.MarkGoogleDailyLimitReached();
+        }
+
         throw new TranslationException(Id, kind, status);
     }
 
@@ -218,6 +230,16 @@ public sealed partial class GoogleEngine : ITranslationEngine
 
     private sealed record GoogleError(int Code, string? Message, string? Status, ErrorItem[]? Errors, ErrorDetail[]? Details)
     {
+        /// <summary>
+        /// The daily quota, not the per-minute one: reason <c>dailyLimitExceeded</c>, the documented message
+        /// "Daily Limit Exceeded", or a quota name that is per day (e.g. <c>...PerDay...</c> in ErrorInfo metadata).
+        /// </summary>
+        public bool IsDailyLimit() =>
+            Reasons().Contains("dailyLimitExceeded", StringComparer.OrdinalIgnoreCase)
+            || (Message?.Contains("Daily Limit", StringComparison.OrdinalIgnoreCase) ?? false)
+            || (Message?.Contains("per day", StringComparison.OrdinalIgnoreCase) ?? false)
+            || (Details ?? []).Any(d => d.Metadata?.Values.Any(v => v.Contains("PerDay", StringComparison.OrdinalIgnoreCase)) == true);
+
         public string[] Reasons() =>
         [
             .. (Errors ?? []).Select(e => e.Reason).OfType<string>(),
@@ -228,7 +250,7 @@ public sealed partial class GoogleEngine : ITranslationEngine
 
     private sealed record ErrorItem(string? Reason);
 
-    private sealed record ErrorDetail(string? Reason);
+    private sealed record ErrorDetail(string? Reason, Dictionary<string, string>? Metadata);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Google rate limited; retrying once in {DelayMs} ms")]
     private static partial void LogRateLimited(ILogger logger, double delayMs);

@@ -78,7 +78,7 @@ public sealed partial class FailoverTranslator : ITranslator
             var result = await CallAsync(first, text, direction, ct).ConfigureAwait(false);
             return Served(result, first.Id, primary);
         }
-        catch (TranslationException ex) when (ex.Kind == TranslationErrorKind.QuotaExceeded)
+        catch (TranslationException ex) when (ex.IsLimitReached)
         {
             MarkExhausted(ex.Engine);
             if (backup is null)
@@ -91,7 +91,7 @@ public sealed partial class FailoverTranslator : ITranslator
                 var result = await CallAsync(backup, text, direction, ct).ConfigureAwait(false);
                 return Served(result, backup.Id, primary);
             }
-            catch (TranslationException backupEx) when (backupEx.Kind == TranslationErrorKind.QuotaExceeded)
+            catch (TranslationException backupEx) when (backupEx.IsLimitReached)
             {
                 MarkExhausted(backupEx.Engine);
                 throw AllExhausted(withKeys, backupEx);
@@ -109,7 +109,7 @@ public sealed partial class FailoverTranslator : ITranslator
             }
             catch (TranslationException backupEx)
             {
-                if (backupEx.Kind == TranslationErrorKind.QuotaExceeded)
+                if (backupEx.IsLimitReached)
                 {
                     MarkExhausted(backupEx.Engine);
                 }
@@ -155,7 +155,8 @@ public sealed partial class FailoverTranslator : ITranslator
     private bool IsExhausted(EngineId engine, int characters, AppSettings settings) => engine switch
     {
         EngineId.DeepL => _usage.IsDeepLExhausted,
-        EngineId.Google => _usage.WouldExceedGoogleCeiling(characters, settings),
+        // Paid usage lifts the app's own ceiling, never Google's daily limit: that is Google refusing.
+        EngineId.Google => _usage.IsGoogleDailyLimited || _usage.WouldExceedGoogleCeiling(characters, settings),
         _ => false,
     };
 
@@ -209,8 +210,21 @@ public sealed partial class FailoverTranslator : ITranslator
         }
     }
 
-    private static TranslationException AllExhausted(List<ITranslationEngine> withKeys, Exception? inner = null) =>
-        new(withKeys[^1].Id, TranslationErrorKind.QuotaExceeded, inner: inner) { AllEnginesExhausted = withKeys.Count > 1 };
+    /// <summary>
+    /// Every engine with a key is out. When Google is among them only for today, the kind says so, so the popup
+    /// can tell the user when Google comes back.
+    /// </summary>
+    private TranslationException AllExhausted(List<ITranslationEngine> withKeys, Exception? inner = null)
+    {
+        var googleDaily = _usage.IsGoogleDailyLimited && withKeys.Any(e => e.Id == EngineId.Google);
+        return new TranslationException(
+            googleDaily ? EngineId.Google : withKeys[^1].Id,
+            googleDaily ? TranslationErrorKind.DailyLimitReached : TranslationErrorKind.QuotaExceeded,
+            inner: inner)
+        {
+            AllEnginesExhausted = withKeys.Count > 1,
+        };
+    }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Switched from {From} to {To} for the rest of the period")]
     private static partial void LogSwitched(ILogger logger, EngineId from, EngineId to);

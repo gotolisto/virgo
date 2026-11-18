@@ -13,6 +13,12 @@ public enum TranslationErrorKind
     /// <summary>The monthly allowance is used up (DeepL 456, or the Google ceiling).</summary>
     QuotaExceeded,
 
+    /// <summary>
+    /// Google refused because the project's daily quota is used up (a limit the owner can set in the Google
+    /// Cloud console). It resets at midnight US Pacific time.
+    /// </summary>
+    DailyLimitReached,
+
     /// <summary>Still rate limited after one retry (429).</summary>
     RateLimited,
 
@@ -61,6 +67,9 @@ public sealed class TranslationException : Exception
     public TranslationErrorKind Kind { get; }
 
     public int? StatusCode { get; }
+
+    /// <summary>The engine cannot be used for a while (monthly allowance or daily limit used up).</summary>
+    public bool IsLimitReached => Kind is TranslationErrorKind.QuotaExceeded or TranslationErrorKind.DailyLimitReached;
 
     /// <summary>Timeouts and server errors are worth one attempt on the backup engine.</summary>
     public bool IsTransient => Kind is TranslationErrorKind.Timeout or TranslationErrorKind.ServerError;

@@ -223,4 +223,42 @@ public sealed class GoogleEngineTests : IDisposable
         Assert.Equal(TranslationErrorKind.MissingKey, ex.Kind);
         Assert.Empty(_handler.Requests);
     }
+
+    [Theory]
+    [InlineData(403, """{"error":{"code":403,"message":"Daily Limit Exceeded","errors":[{"reason":"dailyLimitExceeded"}]}}""")]
+    [InlineData(403, """{"error":{"code":403,"message":"Daily Limit Exceeded"}}""")]
+    [InlineData(429, """{"error":{"code":429,"message":"Quota exceeded for quota metric 'v2 and v3 general model characters' and limit 'per day'.","status":"RESOURCE_EXHAUSTED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"RATE_LIMIT_EXCEEDED","metadata":{"quota_limit":"GeneralModelCharactersPerDayPerProject"}}]}}""")]
+    public async Task Daily_limit_is_recognised_and_remembered(int status, string body)
+    {
+        _handler.Respond(status, body).Respond(status, body);
+
+        var ex = await Assert.ThrowsAsync<TranslationException>(() => Engine().TranslateAsync("Hola", null, Lang.En, CancellationToken.None));
+
+        Assert.Equal(TranslationErrorKind.DailyLimitReached, ex.Kind);
+        Assert.True(ex.IsLimitReached);
+        Assert.True(_usage.IsGoogleDailyLimited);
+    }
+
+    [Fact]
+    public async Task Per_minute_limit_is_still_a_rate_limit()
+    {
+        _handler.Respond(403, """{"error":{"code":403,"message":"User Rate Limit Exceeded","errors":[{"reason":"userRateLimitExceeded"}]}}""");
+
+        var ex = await Assert.ThrowsAsync<TranslationException>(() => Engine().TranslateAsync("Hola", null, Lang.En, CancellationToken.None));
+
+        Assert.Equal(TranslationErrorKind.RateLimited, ex.Kind);
+        Assert.False(_usage.IsGoogleDailyLimited);
+    }
+
+    [Fact]
+    public async Task While_daily_limited_no_request_is_sent_and_nothing_is_counted()
+    {
+        _usage.MarkGoogleDailyLimitReached();
+
+        var ex = await Assert.ThrowsAsync<TranslationException>(() => Engine().TranslateAsync("Hola", null, Lang.En, CancellationToken.None));
+
+        Assert.Equal(TranslationErrorKind.DailyLimitReached, ex.Kind);
+        Assert.Empty(_handler.Requests);
+        Assert.Equal(0, _usage.GoogleCharactersThisMonth);
+    }
 }

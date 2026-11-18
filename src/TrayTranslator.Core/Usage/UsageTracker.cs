@@ -54,6 +54,38 @@ public sealed partial class UsageTracker
     /// <summary>When the Google counter next resets.</summary>
     public DateTimeOffset GoogleResetsAt => GoogleBillingCalendar.NextMonthStart(_time.GetUtcNow());
 
+    /// <summary>True while Google's daily quota is used up (until the next midnight US Pacific time).</summary>
+    public bool IsGoogleDailyLimited => GoogleDailyLimitUntil is { } until && _time.GetUtcNow() < until;
+
+    /// <summary>When Google's daily limit lifts, or null when Google is not daily-limited.</summary>
+    public DateTimeOffset? GoogleDailyLimitUntil
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _state.GoogleDailyLimitUntil is { } until && _time.GetUtcNow() < until ? until : null;
+            }
+        }
+    }
+
+    /// <summary>Google refused with its daily limit: skip it until the next Google day starts.</summary>
+    public void MarkGoogleDailyLimitReached()
+    {
+        lock (_gate)
+        {
+            var until = GoogleBillingCalendar.NextDayStart(_time.GetUtcNow());
+            if (_state.GoogleDailyLimitUntil == until)
+            {
+                return;
+            }
+
+            _state = _state with { GoogleDailyLimitUntil = until };
+            LogGoogleDailyLimit(_logger, until);
+            Save();
+        }
+    }
+
     public bool IsDeepLExhausted
     {
         get
@@ -274,10 +306,15 @@ public sealed partial class UsageTracker
         public DateTimeOffset? DeepLPeriodEnd { get; init; }
 
         public EngineId? SwitchAnnouncedFor { get; init; }
+
+        public DateTimeOffset? GoogleDailyLimitUntil { get; init; }
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "DeepL monthly allowance used up; using the other engine")]
     private static partial void LogDeepLExhausted(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Google daily limit reached; using the other engine until {Until}")]
+    private static partial void LogGoogleDailyLimit(ILogger logger, DateTimeOffset until);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "DeepL allowance available again")]
     private static partial void LogDeepLReset(ILogger logger);

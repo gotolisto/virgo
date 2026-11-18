@@ -30,6 +30,14 @@ public static class PopupText
 
     public static string LimitReached(EngineId engine) => $"Monthly limit reached on {engine.DisplayName()}";
 
+    /// <summary>"Daily limit reached on Google. It resumes at 09:00" (local time of the next Pacific midnight).</summary>
+    public static string DailyLimitReached(DateTimeOffset resumesLocal) =>
+        string.Create(CultureInfo.InvariantCulture, $"Daily limit reached on Google. It resumes at {resumesLocal:HH:mm}");
+
+    /// <summary>Both engines out, Google only until tomorrow.</summary>
+    public static string BothLimitedGoogleResumes(DateTimeOffset resumesLocal) =>
+        string.Create(CultureInfo.InvariantCulture, $"Limits reached on both engines. Google resumes at {resumesLocal:HH:mm}");
+
     public static string SwitchedTo(EngineId engine) => $"Switched to {engine.DisplayName()}";
 
     public static string TooLong(int limit) =>
@@ -42,12 +50,26 @@ public static class PopupText
         return $"{source?.Abbreviation ?? "Auto"} → {target.Abbreviation}";
     }
 
-    public static PopupMessage For(TranslationOutcome.Failure failure)
+    /// <param name="failure">What went wrong.</param>
+    /// <param name="now">The current time; defaults to the system clock.</param>
+    /// <param name="localZone">The user's time zone for "resumes at"; defaults to the computer's.</param>
+    public static PopupMessage For(TranslationOutcome.Failure failure, DateTimeOffset? now = null, TimeZoneInfo? localZone = null)
     {
         ArgumentNullException.ThrowIfNull(failure);
+        var resumes = TimeZoneInfo.ConvertTime(
+            Usage.GoogleBillingCalendar.NextDayStart(now ?? DateTimeOffset.UtcNow),
+            localZone ?? TimeZoneInfo.Local);
+
         if (failure.AllEnginesExhausted)
         {
-            return new PopupMessage(BothExhausted);
+            return failure.Kind == TranslationErrorKind.DailyLimitReached
+                ? new PopupMessage(BothLimitedGoogleResumes(resumes))
+                : new PopupMessage(BothExhausted);
+        }
+
+        if (failure.Kind == TranslationErrorKind.DailyLimitReached)
+        {
+            return new PopupMessage(DailyLimitReached(resumes));
         }
 
         return failure.Kind switch

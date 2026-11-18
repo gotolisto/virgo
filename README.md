@@ -65,6 +65,11 @@ switches to Google until DeepL's allowance resets. A DeepL Pro key also works.
 > app only knows about its own use of the key; if the same key is used elsewhere, set a lower ceiling or
 > a budget alert in Google Cloud.
 
+To make sure Google can never bill you, also set a daily cap in Google Cloud: **Quotas & System Limits**,
+filter by *Cloud Translation API*, and set **"v2 and v3 general model characters per day"** to **16,000**
+(16,000 × 31 days stays under the free 500,000). When Google reaches that cap, Tray Translator switches to
+DeepL until the cap resets at midnight US Pacific time, then returns to Google.
+
 ## Install
 
 Download `TrayTranslator-win-Setup.exe` from the

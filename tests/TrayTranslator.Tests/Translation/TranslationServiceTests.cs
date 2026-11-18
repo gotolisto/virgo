@@ -233,4 +233,26 @@ public class TranslationServiceTests
         var (a, b) = Service(DetectionResult.Unknown, new ScriptedTranslator(), new AppSettings { LanguageA = "xx", LanguageB = "yy" }).LanguagePair();
         Assert.Equal(("en", "es"), (a.Code, b.Code));
     }
+
+    [Fact]
+    public void Daily_limit_messages_give_the_local_resume_time()
+    {
+        // 18 Nov 05:00 UTC; Google resumes at 08:00 UTC = 09:00 in a UTC+1 zone.
+        var now = new DateTimeOffset(2026, 11, 18, 5, 0, 0, TimeSpan.Zero);
+        var utcPlusOne = TimeZoneInfo.CreateCustomTimeZone("test+1", TimeSpan.FromHours(1), "test+1", "test+1");
+        var direction = new TranslationDirection(Lang.Es, Lang.En);
+
+        var single = PopupText.For(new TranslationOutcome.Failure(TranslationErrorKind.DailyLimitReached, direction, EngineId.Google), now, utcPlusOne);
+        var both = PopupText.For(new TranslationOutcome.Failure(TranslationErrorKind.DailyLimitReached, direction, EngineId.Google, AllEnginesExhausted: true), now, utcPlusOne);
+
+        Assert.Equal("Daily limit reached on Google. It resumes at 09:00", single.Message);
+        Assert.Equal("Limits reached on both engines. Google resumes at 09:00", both.Message);
+    }
+
+    [Fact]
+    public void Both_monthly_limits_keep_the_original_message()
+    {
+        var failure = new TranslationOutcome.Failure(TranslationErrorKind.QuotaExceeded, new TranslationDirection(Lang.Es, Lang.En), EngineId.Google, AllEnginesExhausted: true);
+        Assert.Equal("Monthly limit reached on both engines", PopupText.For(failure).Message);
+    }
 }
