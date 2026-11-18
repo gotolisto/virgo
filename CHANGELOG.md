@@ -12,7 +12,7 @@ Versions follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH): 
 
 ## [Unreleased]
 
-## [0.2.2] - Unreleased
+## [0.2.2] - 2026-11-18
 
 ### Fixed
 - With "Replace the selected text automatically" on, translating text that cannot be edited (for example
