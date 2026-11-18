@@ -12,6 +12,14 @@ Versions follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH): 
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-18
+
+### Changed
+- When Google's daily limit is reached (a limit you can set in the Google Cloud console to stay inside the
+  free allowance), the app switches to DeepL until the limit resets at midnight US Pacific time, says
+  "Switched to DeepL" once, and then goes back to Google. Before, the popup only said "Try again".
+- If both engines are out, the popup says when Google resumes, in your local time.
+
 ## [0.2.0] - 2026-11-16
 
 The first published release.

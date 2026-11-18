@@ -140,4 +140,32 @@ public sealed class UsageTrackerTests : IDisposable
         Assert.Equal(0, tracker.GoogleCharactersThisMonth);
         Assert.True(File.Exists(_dir.File("usage.json.bad")));
     }
+
+    [Fact]
+    public void Google_daily_limit_lasts_until_Pacific_midnight_and_survives_a_restart()
+    {
+        // 15 Nov 12:00 UTC is 04:00 PST; the limit lifts at 16 Nov 08:00 UTC.
+        NewTracker().MarkGoogleDailyLimitReached();
+
+        var tracker = NewTracker();
+        Assert.True(tracker.IsGoogleDailyLimited);
+        Assert.Equal(new DateTimeOffset(2026, 11, 16, 8, 0, 0, TimeSpan.Zero), tracker.GoogleDailyLimitUntil!.Value.ToUniversalTime());
+
+        _clock.Set(new DateTimeOffset(2026, 11, 16, 7, 59, 0, TimeSpan.Zero));
+        Assert.True(tracker.IsGoogleDailyLimited);
+
+        _clock.Set(new DateTimeOffset(2026, 11, 16, 8, 0, 0, TimeSpan.Zero));
+        Assert.False(tracker.IsGoogleDailyLimited);
+        Assert.Null(tracker.GoogleDailyLimitUntil);
+    }
+
+    [Fact]
+    public void Daily_limit_does_not_touch_the_monthly_count()
+    {
+        var tracker = NewTracker();
+        tracker.RecordGoogleCharacters(100);
+        tracker.MarkGoogleDailyLimitReached();
+
+        Assert.Equal(100, tracker.GoogleCharactersThisMonth);
+    }
 }

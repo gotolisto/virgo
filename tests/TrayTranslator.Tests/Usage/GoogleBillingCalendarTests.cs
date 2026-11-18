@@ -39,4 +39,18 @@ public class GoogleBillingCalendarTests
         // 31 Oct 23:30 UTC is 31 Oct 16:30 PDT; 1 Nov 05:00 UTC is still 31 Oct 22:00 PDT.
         Assert.Equal("2026-10", GoogleBillingCalendar.MonthKey(new DateTimeOffset(2026, 11, 1, 5, 0, 0, TimeSpan.Zero)));
     }
+
+    [Theory]
+    // Winter (PST): the next Google day starts at 08:00 UTC.
+    [InlineData("2026-11-18T05:00:00Z", "2026-11-18T08:00:00Z")]
+    [InlineData("2026-11-18T08:00:00Z", "2026-11-19T08:00:00Z")]
+    // Summer (PDT): at 07:00 UTC.
+    [InlineData("2026-07-10T12:00:00Z", "2026-07-11T07:00:00Z")]
+    public void Next_day_starts_at_Pacific_midnight(string now, string expected)
+    {
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        Assert.Equal(
+            DateTimeOffset.Parse(expected, culture),
+            GoogleBillingCalendar.NextDayStart(DateTimeOffset.Parse(now, culture)).ToUniversalTime());
+    }
 }

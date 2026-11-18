@@ -338,4 +338,81 @@ public sealed class FailoverTranslatorTests : IDisposable
         Assert.Equal(42, report[EngineId.Google]!.CharacterCount);
         Assert.Equal(480_000, report[EngineId.Google]!.CharacterLimit);
     }
+
+    private const string GoogleDailyLimit = """{"error":{"code":403,"message":"Daily Limit Exceeded","errors":[{"reason":"dailyLimitExceeded"}]}}""";
+
+    [Fact]
+    public async Task Google_daily_limit_switches_to_DeepL_and_says_so_once()
+    {
+        _settings = new AppSettings { DefaultEngine = EngineId.Google };
+        _googleHttp.Respond(403, GoogleDailyLimit);
+        _deeplHttp.Respond(HttpStatusCode.OK, DeepLOk).Respond(HttpStatusCode.OK, DeepLOk);
+        var translator = Translator();
+
+        var first = await Translate(translator);
+        var second = await Translate(translator);
+
+        Assert.Equal(EngineId.DeepL, first.Engine);
+        Assert.Equal("Switched to DeepL", first.Notice);
+        Assert.Equal(EngineId.DeepL, second.Engine);
+        Assert.Null(second.Notice);
+        Assert.Single(_googleHttp.Requests); // Google is not asked again today
+    }
+
+    [Fact]
+    public async Task Google_comes_back_after_Pacific_midnight()
+    {
+        _settings = new AppSettings { DefaultEngine = EngineId.Google };
+        _googleHttp.Respond(403, GoogleDailyLimit).Respond(HttpStatusCode.OK, GoogleOk);
+        _deeplHttp.Respond(HttpStatusCode.OK, DeepLOk);
+        var translator = Translator();
+
+        Assert.Equal(EngineId.DeepL, (await Translate(translator)).Engine);
+
+        // The clock starts at 15 Nov 12:00 UTC (04:00 PST); the next Google day starts at 16 Nov 08:00 UTC.
+        _clock.Set(new DateTimeOffset(2026, 11, 16, 8, 0, 0, TimeSpan.Zero));
+        var back = await Translate(translator);
+
+        Assert.Equal(EngineId.Google, back.Engine);
+        Assert.Null(back.Notice);
+    }
+
+    [Fact]
+    public async Task Google_daily_limit_as_backup_after_DeepL_456_reports_both_with_Google_daily()
+    {
+        _deeplHttp.Respond(456);
+        _googleHttp.Respond(403, GoogleDailyLimit);
+
+        var ex = await Assert.ThrowsAsync<TranslationException>(() => Translate(Translator()));
+
+        Assert.True(ex.AllEnginesExhausted);
+        Assert.Equal(TranslationErrorKind.DailyLimitReached, ex.Kind);
+        Assert.True(_usage.IsDeepLExhausted);
+        Assert.True(_usage.IsGoogleDailyLimited);
+    }
+
+    [Fact]
+    public async Task Paid_usage_does_not_override_Googles_daily_limit()
+    {
+        _settings = new AppSettings { DefaultEngine = EngineId.Google, AllowPaidUsage = true };
+        _usage.MarkGoogleDailyLimitReached();
+        _deeplHttp.Respond(HttpStatusCode.OK, DeepLOk);
+
+        var result = await Translate(Translator());
+
+        Assert.Equal(EngineId.DeepL, result.Engine);
+        Assert.Empty(_googleHttp.Requests);
+    }
+
+    [Fact]
+    public async Task Only_Google_with_a_key_and_daily_limited_is_not_both_exhausted()
+    {
+        _deeplKey = null;
+        _usage.MarkGoogleDailyLimitReached();
+
+        var ex = await Assert.ThrowsAsync<TranslationException>(() => Translate(Translator()));
+
+        Assert.Equal(TranslationErrorKind.DailyLimitReached, ex.Kind);
+        Assert.False(ex.AllEnginesExhausted);
+    }
 }
