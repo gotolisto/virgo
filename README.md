@@ -85,6 +85,11 @@ user only (no administrator prompt), adds a Start menu shortcut, and starts the 
 protected your PC"*. Click **More info → Run anyway**. Some browsers also ask you to confirm keeping the
 download.
 
+Already installed? Run the newer `Setup.exe` anyway: it detects the installed version and asks
+"Version 0.2.1 is currently installed. Would you like to update to version 0.2.2?". Click **Update**. There
+is no need to uninstall first. The same version offers **Repair**, an older installer warns before a
+**Downgrade**. Settings and keys are kept either way (log files are cleared).
+
 The app updates itself from GitHub Releases. It checks at startup and every 24 hours, downloads in the
 background, and shows a notification. Click it, or use *Install update and restart* in the tray menu.
 Settings and keys are kept across updates.
