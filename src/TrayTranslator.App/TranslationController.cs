@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using TrayTranslator.App.Infrastructure;
 using TrayTranslator.App.Ui;
 using TrayTranslator.Core.Clipboard;
+using TrayTranslator.Core.Languages;
 using TrayTranslator.Core.Platform;
 using TrayTranslator.Core.Translation;
 
@@ -11,7 +12,12 @@ namespace TrayTranslator.App;
 
 /// <summary>
 /// Ctrl+C+C → read the clipboard → popup with spinner → translation. Runs on the UI thread. A new trigger
-/// cancels the request in flight and reuses the popup. The clipboard is only written by the Copy button.
+/// cancels the request in flight and reuses the popup. The clipboard is written by Copy, and briefly by
+/// Replace, which puts the user's text back afterwards.
+/// <para>
+/// With "Replace automatically" on, there is no popup: the translation is pasted over the selection. The popup
+/// still appears for errors, for text that is too long, and when the paste cannot be done.
+/// </para>
 /// </summary>
 internal sealed partial class TranslationController : IDisposable
 {
@@ -21,7 +27,13 @@ internal sealed partial class TranslationController : IDisposable
     private readonly ICursorLocator _cursor;
     private readonly TranslationService _service;
     private readonly PopupWindow _popup;
+    private readonly ITextReplacer _replacer;
+    private readonly Func<TrayTranslator.Core.Settings.AppSettings> _settings;
+    private readonly Action<string> _notify;
     private readonly ILogger _logger;
+
+    private FocusTarget _target;
+    private Language? _shownSource;
 
     private CancellationTokenSource? _current;
     private string? _text;
@@ -36,6 +48,9 @@ internal sealed partial class TranslationController : IDisposable
         ICursorLocator cursor,
         TranslationService service,
         PopupWindow popup,
+        ITextReplacer replacer,
+        Func<TrayTranslator.Core.Settings.AppSettings> settings,
+        Action<string> notify,
         ILogger<TranslationController> logger)
     {
         _dispatcher = dispatcher;
@@ -44,12 +59,17 @@ internal sealed partial class TranslationController : IDisposable
         _cursor = cursor;
         _service = service;
         _popup = popup;
+        _replacer = replacer;
+        _settings = settings;
+        _notify = notify;
         _logger = logger;
 
         _hotkey.Triggered += OnTriggered;
         _popup.SwapRequested += OnSwapRequested;
         _popup.RetryRequested += OnRetryRequested;
         _popup.CopyRequested += OnCopyRequested;
+        _popup.ReplaceRequested += OnReplaceRequested;
+        _popup.TargetPicked += OnTargetPicked;
         _popup.OpenSettingsRequested += OnOpenSettingsRequested;
         _popup.IsVisibleChanged += OnPopupVisibleChanged;
     }
@@ -80,6 +100,8 @@ internal sealed partial class TranslationController : IDisposable
 
     private async Task HandleTriggerAsync()
     {
+        // Remember the window the text was selected in before anything of ours can take focus.
+        var target = _replacer.CaptureFocus();
         var cts = Restart();
         var cursor = _cursor.GetCursorPosition();
 
@@ -101,16 +123,80 @@ internal sealed partial class TranslationController : IDisposable
 
         _text = text;
         _anchor = cursor;
+        _target = target;
         _shownDirection = null;
+        _shownSource = null;
+        _popup.SetChoices(_service.LanguageChoices());
 
         if (_service.IsTooLong(text, out var limit))
         {
             LogTooLong(_logger, text.Length, limit);
-            _popup.ShowMessage(cursor, string.Empty, PopupText.TooLong(limit), PopupAction.None, null, canSwap: false);
+            _popup.ShowMessage(cursor, null, PopupText.TooLong(limit), PopupAction.None, null, canSwap: false);
+            return;
+        }
+
+        if (_settings().ReplaceAutomatically)
+        {
+            await AutoReplaceAsync(text, cts);
             return;
         }
 
         await RunAsync(null, cts);
+    }
+
+    /// <summary>Translate and paste over the selection, without a popup unless something goes wrong.</summary>
+    private async Task AutoReplaceAsync(string text, CancellationTokenSource cts)
+    {
+        TranslationOutcome outcome;
+        try
+        {
+            outcome = await _service.TranslateAsync(text, null, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (cts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        switch (outcome)
+        {
+            case TranslationOutcome.Success s:
+                _shownDirection = s.Direction;
+                _shownSource = s.ShownSource;
+                Translated?.Invoke(this, EventArgs.Empty);
+                if (s.Notice is { } notice)
+                {
+                    _notify(notice);
+                }
+
+                await ReplaceOrFallBackAsync(s.Text);
+                break;
+
+            case TranslationOutcome.Failure f:
+                _shownDirection = f.Direction;
+                var message = PopupText.For(f);
+                _popup.ShowMessage(_anchor, f.Direction, message.Message, message.Action, message.ActionLabel, canSwap: true);
+                break;
+
+            case TranslationOutcome.TooLong t:
+                _popup.ShowMessage(_anchor, null, PopupText.TooLong(t.Limit), PopupAction.None, null, canSwap: false);
+                break;
+        }
+    }
+
+    /// <summary>Pastes over the selection; when that is not possible, shows the translation with Copy.</summary>
+    private async Task ReplaceOrFallBackAsync(string translation)
+    {
+        // Not tied to the request token: hiding the popup cancels that, and Replace hides the popup first.
+        var replaced = await _replacer.ReplaceSelectionAsync(_target, translation, _text, CancellationToken.None);
+        if (!replaced && _shownDirection is { } shown)
+        {
+            _popup.ShowTranslation(_shownSource, shown.Target, translation, PopupText.ReplaceFailed, canReplace: false, cursor: _anchor);
+        }
     }
 
     private async Task RunAsync(TranslationDirection? forced, CancellationTokenSource cts)
@@ -121,8 +207,7 @@ internal sealed partial class TranslationController : IDisposable
         }
 
         _forced = forced;
-        var header = forced is null ? "…" : PopupText.Direction(forced.Source, forced.Target);
-        _popup.ShowLoading(_anchor, header);
+        _popup.ShowLoading(_anchor, forced);
 
         TranslationOutcome outcome;
         try
@@ -143,18 +228,19 @@ internal sealed partial class TranslationController : IDisposable
         {
             case TranslationOutcome.Success s:
                 _shownDirection = s.Direction;
-                _popup.ShowTranslation(PopupText.Direction(s.ShownSource, s.Direction.Target), s.Text, s.Notice);
+                _shownSource = s.ShownSource;
+                _popup.ShowTranslation(s.ShownSource, s.Direction.Target, s.Text, s.Notice, canReplace: !_target.IsNone);
                 Translated?.Invoke(this, EventArgs.Empty);
                 break;
 
             case TranslationOutcome.Failure f:
                 _shownDirection = f.Direction;
                 var message = PopupText.For(f);
-                _popup.ShowMessage(null, PopupText.Direction(f.Direction.Source, f.Direction.Target), message.Message, message.Action, message.ActionLabel, canSwap: true);
+                _popup.ShowMessage(null, f.Direction, message.Message, message.Action, message.ActionLabel, canSwap: true);
                 break;
 
             case TranslationOutcome.TooLong t:
-                _popup.ShowMessage(null, string.Empty, PopupText.TooLong(t.Limit), PopupAction.None, null, canSwap: false);
+                _popup.ShowMessage(null, null, PopupText.TooLong(t.Limit), PopupAction.None, null, canSwap: false);
                 break;
         }
     }
@@ -179,9 +265,16 @@ internal sealed partial class TranslationController : IDisposable
         RunAsync(swapped, Restart()).Forget(_logger);
     }
 
+    /// <summary>A language picked in the popup's menu: same text, that target, this popup only.</summary>
+    private void OnTargetPicked(object? sender, Language target) =>
+        RunAsync(DirectionResolver.ToTarget(_shownSource ?? _shownDirection?.Source, target), Restart()).Forget(_logger);
+
     private void OnRetryRequested(object? sender, EventArgs e) => RunAsync(_forced, Restart()).Forget(_logger);
 
     private void OnOpenSettingsRequested(object? sender, EventArgs e) => OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+
+    private void OnReplaceRequested(object? sender, string translation) =>
+        ReplaceOrFallBackAsync(translation).Forget(_logger);
 
     private void OnCopyRequested(object? sender, string text)
     {

@@ -17,11 +17,21 @@ translation appears in a popup next to the cursor.
 | --- | --- |
 | Translate | Select text, hold Ctrl, press C twice quickly (within 0.5 s by default) |
 | Translate the other way | The ⇄ button in the popup header |
+| Translate into another language | Click the target language in the popup header (e.g. **ES ▾**) and pick one. Add languages under Settings → *More languages*. The next Ctrl+C+C goes back to A ⇄ B. |
 | Copy the translation | **Copy** (closes the popup) |
+| Put the translation in place of your selection | **Replace** (pastes over the text you selected, then puts your clipboard back) |
+| Always replace, with no popup | Settings → *Replace the selected text automatically* |
 | Close the popup | Esc, the ✕ button, or click elsewhere |
 | Settings, pause, usage, updates | Right-click the tray icon |
 
 A single Ctrl+C is always a normal copy. Holding Ctrl+C down never opens the popup.
+
+**Replace** works in any window that accepts Ctrl+V. The app puts the translation on the clipboard, returns
+to the window you selected the text in, presses Ctrl+V for you once you have let go of Ctrl, and then puts
+your copied text back on the clipboard. Windows does not allow it to type into a program running as
+administrator. In that case, and whenever the paste is not possible, the popup appears with the translation
+so you can use Copy. With automatic replace on, the popup also appears for errors and for text that is too
+long, and "Switched to …" shows as a notification.
 
 ## Getting API keys
 
@@ -125,30 +135,47 @@ On Linux or macOS, write `dotnet vpk "[win]" pack …` to cross-package for Wind
 | `src/TrayTranslator.App` | The WPF app: popup, settings, first-run and About windows, tray icon, and the Windows implementations of Core's platform interfaces (`IHotkeyListener`, `IClipboardReader`, `ITrayIcon`, `IAutostart`, `ISecretStore`, `ICursorLocator`). |
 | `tests/TrayTranslator.Tests` | xUnit tests for Core. |
 
-## Releasing
+## Versions and releasing
 
-The version lives in one place: `<Version>` in `src/TrayTranslator.App/TrayTranslator.App.csproj`
-(MAJOR.MINOR.PATCH). About and the tray tooltip read it from the assembly.
+Every release has a version number, `MAJOR.MINOR.PATCH`, and its own section in
+[`CHANGELOG.md`](CHANGELOG.md). Users see that file inside the app: tray menu → **What's new** (also
+linked from About), and a notification after each update says what the new version brings.
 
-1. Set `<Version>` to the new version, for example `0.2.0`.
-2. In `CHANGELOG.md`, move the *Unreleased* entries under a new `## [0.2.0] - YYYY-MM-DD` heading. That
-   section becomes the release notes.
-3. Commit, then tag and push the tag:
+| Change | Version step | Example |
+| --- | --- | --- |
+| New feature or visible change | MINOR | 0.2.0 → 0.3.0 |
+| Only bug fixes | PATCH | 0.2.0 → 0.2.1 |
+| Something that breaks existing settings or habits | MAJOR (after 1.0) | 1.4.0 → 2.0.0 |
+
+**Every change** adds a line to `CHANGELOG.md` under `## [Unreleased]`, in the same pull request, written
+for users ("Replace button in the popup…").
+
+**To release**, the version lives in one place: `<Version>` in
+`src/TrayTranslator.App/TrayTranslator.App.csproj`. About and the tray tooltip read it from the app.
+
+1. Set `<Version>` to the new version, for example `0.3.0`.
+2. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [0.3.0] - YYYY-MM-DD` with today's date, and add a
+   fresh empty `## [Unreleased]` above it.
+3. Commit, merge to `main`, then tag and push the tag:
 
    ```bash
-   git tag v0.2.0
+   git tag v0.3.0
    ```
 
    ```bash
-   git push origin v0.2.0
+   git push origin v0.3.0
    ```
+
+Two checks keep versions and notes together:
+- The tests fail if `CHANGELOG.md` has no section with entries for the version in `<Version>`.
+- The release workflow fails if the tag does not match `<Version>`, or the section is missing, empty or
+  still says *Unreleased*.
 
 The **Release** workflow (`.github/workflows/release.yml`) then:
-- checks that the tag matches `<Version>`
 - runs the tests
 - publishes a self-contained win-x64 build
 - packages it with Velopack, including a delta from the previous release
-- uploads `Setup.exe` and the update packages to a GitHub Release for the tag
+- uploads `Setup.exe` and the update packages to a GitHub Release, with the changelog section as its notes
 
 Installed copies pick the update up within 24 hours, or straight away with *Check for updates*.
 

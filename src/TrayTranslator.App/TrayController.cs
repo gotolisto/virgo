@@ -20,6 +20,7 @@ internal sealed class TrayController : IDisposable
     private readonly IUpdateService _updates;
     private readonly Action _openSettings;
     private readonly Action _openAbout;
+    private readonly Action _openWhatsNew;
     private readonly Action _quit;
     private readonly ILogger _logger;
 
@@ -34,6 +35,7 @@ internal sealed class TrayController : IDisposable
         IUpdateService updates,
         Action openSettings,
         Action openAbout,
+        Action openWhatsNew,
         Action quit,
         ILogger<TrayController> logger)
     {
@@ -43,6 +45,7 @@ internal sealed class TrayController : IDisposable
         _updates = updates;
         _openSettings = openSettings;
         _openAbout = openAbout;
+        _openWhatsNew = openWhatsNew;
         _quit = quit;
         _logger = logger;
         _tray.MenuOpening += OnMenuOpening;
@@ -103,6 +106,7 @@ internal sealed class TrayController : IDisposable
             _updates.PendingVersion is { } pending
                 ? new TrayMenuItem($"Install update {pending} and restart", _updates.InstallAndRestart)
                 : new TrayMenuItem("Check for updates", () => _updates.CheckNowAsync(userInitiated: true).Forget(_logger)),
+            new TrayMenuItem("What's new", _openWhatsNew),
             new TrayMenuItem("About", _openAbout),
             new TrayMenuItem("Quit", _quit),
         ]);

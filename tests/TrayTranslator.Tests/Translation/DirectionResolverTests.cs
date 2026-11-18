@@ -80,4 +80,27 @@ public class DirectionResolverTests
         var swapped = DirectionResolver.Swap(new TranslationDirection(null, Lang.En), Lang.En, Lang.Es);
         Assert.Equal(("en", "es"), (swapped.Source?.Code, swapped.Target.Code));
     }
+
+    [Fact]
+    public void Picking_a_target_keeps_the_shown_source()
+    {
+        var d = DirectionResolver.ToTarget(Lang.Es, Lang.Fr);
+        Assert.Equal(("es", "fr"), (d.Source?.Code, d.Target.Code));
+    }
+
+    [Fact]
+    public void Picking_the_source_language_lets_the_engine_detect()
+    {
+        var d = DirectionResolver.ToTarget(Lang.Es, Lang.Es);
+        Assert.Null(d.Source);
+        Assert.Equal("es", d.Target.Code);
+    }
+
+    [Fact]
+    public void Picking_a_target_with_an_unknown_source_lets_the_engine_detect()
+    {
+        var d = DirectionResolver.ToTarget(null, Lang.De);
+        Assert.Null(d.Source);
+        Assert.Equal("de", d.Target.Code);
+    }
 }

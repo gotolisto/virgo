@@ -28,6 +28,12 @@ public sealed record AppSettings
     /// <summary>ISO 639-1 code, lower case.</summary>
     public string LanguageB { get; init; } = DefaultLanguageB;
 
+    /// <summary>
+    /// More target languages offered in the popup's language menu, besides A and B (ISO 639-1 codes).
+    /// They never change the automatic A/B direction.
+    /// </summary>
+    public LanguageList ExtraLanguages { get; init; } = LanguageList.Empty;
+
     public EngineId DefaultEngine { get; init; } = EngineId.DeepL;
 
     public int DoublePressIntervalMs { get; init; } = DefaultDoublePressIntervalMs;
@@ -45,6 +51,18 @@ public sealed record AppSettings
     public ThemePreference Theme { get; init; } = ThemePreference.System;
 
     public bool CheckForUpdatesAutomatically { get; init; } = true;
+
+    /// <summary>
+    /// When on, Ctrl+C+C pastes the translation over the selected text without showing the popup.
+    /// The popup still appears for errors, text that is too long, or when the paste is not possible.
+    /// </summary>
+    public bool ReplaceAutomatically { get; init; }
+
+    /// <summary>
+    /// The app version the user last ran. When the running version is newer, the app has just been updated
+    /// and offers its What's new notes.
+    /// </summary>
+    public string? LastSeenVersion { get; init; }
 
     /// <summary>False until the first-run window has been completed.</summary>
     public bool FirstRunCompleted { get; init; }
@@ -69,6 +87,7 @@ public sealed record AppSettings
             SchemaVersion = CurrentSchemaVersion,
             LanguageA = a,
             LanguageB = b,
+            ExtraLanguages = NormalizeExtras(ExtraLanguages, a, b),
             DefaultEngine = Enum.IsDefined(DefaultEngine) ? DefaultEngine : EngineId.DeepL,
             DoublePressIntervalMs = Math.Clamp(DoublePressIntervalMs, MinDoublePressIntervalMs, MaxDoublePressIntervalMs),
             MaxTextLength = Math.Clamp(MaxTextLength, MinMaxTextLength, MaxMaxTextLength),
@@ -76,6 +95,14 @@ public sealed record AppSettings
             Theme = Enum.IsDefined(Theme) ? Theme : ThemePreference.System,
         };
     }
+
+    /// <summary>Known codes only, lower case, no duplicates, without A and B, in the order given.</summary>
+    private static LanguageList NormalizeExtras(LanguageList? extras, string a, string b) => new(
+        (extras ?? LanguageList.Empty)
+            .Select(code => code?.Trim().ToLowerInvariant())
+            .OfType<string>()
+            .Where(code => code != a && code != b && Languages.LanguageCatalog.IsSupported(code))
+            .Distinct(StringComparer.Ordinal));
 
     private static string NormalizeLanguage(string? code, string fallback)
     {

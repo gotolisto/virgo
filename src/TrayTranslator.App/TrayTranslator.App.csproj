@@ -19,7 +19,7 @@
     <StartupObject>TrayTranslator.App.Program</StartupObject>
 
     <!-- The one place the version lives. MAJOR.MINOR.PATCH. About and the tooltip read it from the assembly. -->
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
 
     <Product>Tray Translator</Product>
     <Company>gotolisto</Company>
@@ -34,6 +34,8 @@
 
   <ItemGroup>
     <Resource Include="Assets\app.ico" />
+    <!-- The What's new window reads the changelog from inside the exe. -->
+    <EmbeddedResource Include="..\..\CHANGELOG.md" LogicalName="TrayTranslator.App.CHANGELOG.md" Visible="false" />
     <None Remove="Assets\icon-256.png" />
   </ItemGroup>
 
@@ -42,7 +44,6 @@
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.15" />
     <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
 

@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using TrayTranslator.App.Interop;
 using TrayTranslator.App.Platform;
+using TrayTranslator.Core.Languages;
 using TrayTranslator.Core.Platform;
 using TrayTranslator.Core.Popup;
 using TrayTranslator.Core.Translation;
@@ -22,6 +23,7 @@ public partial class PopupWindow : Window
     private readonly DoubleAnimation _spin = new(0, 360, new Duration(TimeSpan.FromSeconds(0.9))) { RepeatBehavior = RepeatBehavior.Forever };
     private ScreenPoint _anchor;
     private PopupAction _action;
+    private IReadOnlyList<Language> _choices = [];
 
     internal PopupWindow(ICursorLocator locator)
     {
@@ -45,38 +47,56 @@ public partial class PopupWindow : Window
     /// <summary>Raised with the text to put on the clipboard when Copy is pressed.</summary>
     public event EventHandler<string>? CopyRequested;
 
+    /// <summary>Raised when a language is picked in the header's language menu.</summary>
+    public event EventHandler<Language>? TargetPicked;
+
+    /// <summary>Raised with the translation when Replace is pressed (after the popup has hidden itself).</summary>
+    public event EventHandler<string>? ReplaceRequested;
+
     private nint Handle => new WindowInteropHelper(this).Handle;
 
-    /// <summary>Shows the spinner at <paramref name="cursor"/>.</summary>
-    public void ShowLoading(ScreenPoint cursor, string direction)
+    /// <summary>The languages offered in the header's menu, in order.</summary>
+    public void SetChoices(IReadOnlyList<Language> choices) => _choices = choices;
+
+    /// <summary>Shows the spinner at <paramref name="cursor"/>; <paramref name="direction"/> is null while unknown.</summary>
+    public void ShowLoading(ScreenPoint cursor, TranslationDirection? direction)
     {
-        DirectionText.Text = direction;
+        SetHeader(direction?.Source, direction?.Target, pickable: false);
         NoticeText.Visibility = Visibility.Collapsed;
         SetBody(loading: true);
         SwapButton.IsEnabled = false;
         ShowAt(cursor);
     }
 
-    public void ShowTranslation(string direction, string text, string? notice)
+    /// <param name="canReplace">Show the Replace button (there is a window to paste into).</param>
+    /// <param name="cursor">Show the popup at this point first; null when it is already showing.</param>
+    public void ShowTranslation(Language? source, Language target, string text, string? notice, bool canReplace, ScreenPoint? cursor = null)
     {
-        DirectionText.Text = direction;
+        SetHeader(source, target, pickable: true);
         SetNotice(notice);
         ResultText.Text = text;
         ResultText.ScrollToHome();
         SetBody(result: true);
         SwapButton.IsEnabled = true;
         CopyButton.Visibility = Visibility.Visible;
+        ReplaceButton.Visibility = canReplace ? Visibility.Visible : Visibility.Collapsed;
         SetAction(PopupAction.None, null);
+        if (cursor is { } point)
+        {
+            ShowAt(point);
+        }
     }
 
-    public void ShowMessage(ScreenPoint? cursor, string direction, string message, PopupAction action, string? actionLabel, bool canSwap)
+    /// <param name="direction">The direction the failed request used; null when there was none (e.g. too long).</param>
+    public void ShowMessage(ScreenPoint? cursor, TranslationDirection? direction, string message, PopupAction action, string? actionLabel, bool canSwap)
     {
-        DirectionText.Text = direction;
+        SetHeader(direction?.Source, direction?.Target, pickable: direction is not null, emptyWhenUnknown: direction is null);
         NoticeText.Visibility = Visibility.Collapsed;
         MessageText.Text = message;
         SetBody(message: true);
         SwapButton.IsEnabled = canSwap;
         CopyButton.Visibility = Visibility.Collapsed;
+        ReplaceButton.Visibility = Visibility.Collapsed;
         SetAction(action, actionLabel);
         if (cursor is { } point)
         {
@@ -91,6 +111,7 @@ public partial class PopupWindow : Window
             return;
         }
 
+        TargetButton.IsChecked = false;
         SpinnerRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, null);
         Hide();
     }
@@ -143,12 +164,47 @@ public partial class PopupWindow : Window
         if (loading)
         {
             CopyButton.Visibility = Visibility.Collapsed;
+            ReplaceButton.Visibility = Visibility.Collapsed;
             SetAction(PopupAction.None, null);
             SpinnerRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, _spin);
         }
         else
         {
             SpinnerRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, null);
+        }
+    }
+
+    /// <summary>"ES →" plus the target as a button that opens the language menu.</summary>
+    private void SetHeader(Language? source, Language? target, bool pickable, bool emptyWhenUnknown = false)
+    {
+        TargetButton.IsChecked = false;
+        if (target is null)
+        {
+            DirectionText.Text = emptyWhenUnknown ? string.Empty : "…";
+            TargetButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        DirectionText.Text = $"{source?.Abbreviation ?? "Auto"} →";
+        TargetText.Text = target.Abbreviation;
+        TargetButton.Visibility = Visibility.Visible;
+        TargetButton.IsEnabled = pickable && _choices.Count > 1;
+
+        TargetList.Children.Clear();
+        foreach (var language in _choices)
+        {
+            var row = new System.Windows.Controls.Button
+            {
+                Style = (Style)FindResource("MenuRow"),
+                Content = language.Name,
+                FontWeight = language.Code == target.Code ? FontWeights.SemiBold : FontWeights.Normal,
+            };
+            row.Click += (_, _) =>
+            {
+                TargetButton.IsChecked = false;
+                TargetPicked?.Invoke(this, language);
+            };
+            TargetList.Children.Add(row);
         }
     }
 
@@ -182,6 +238,15 @@ public partial class PopupWindow : Window
     {
         CopyRequested?.Invoke(this, ResultText.Text);
         HideAndReset();
+    }
+
+    private void OnReplaceClick(object sender, RoutedEventArgs e)
+    {
+        var text = ResultText.Text;
+
+        // Hide first, so the original window can take focus back.
+        HideAndReset();
+        ReplaceRequested?.Invoke(this, text);
     }
 
     private void OnActionClick(object sender, RoutedEventArgs e)

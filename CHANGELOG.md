@@ -1,14 +1,37 @@
 # Changelog
 
-All notable changes to Tray Translator are listed here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
-[semantic versioning](https://semver.org/). The section for a version becomes its GitHub release notes.
+Every version of Tray Translator and what it changed, newest first. The app shows this file in its
+**What's new** window, and the section for a version becomes its GitHub release notes.
+
+Versions follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH): new features raise MINOR
+(0.2.0 → 0.3.0), fixes on their own raise PATCH (0.2.0 → 0.2.1). The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+**Rule for every change:** add a line under *Unreleased* in the same pull request. To release, see
+"Versions and releasing" in the README.
 
 ## [Unreleased]
 
-## [0.1.0] - Unreleased
+## [0.2.0] - 2026-11-16
 
-First release.
+The first published release.
+
+### Added
+- **Replace** button in the popup: swaps the selected text in the original window for the translation,
+  then puts your copied text back on the clipboard.
+- Setting to replace automatically on Ctrl+C+C, with no popup. The popup still appears for errors, or
+  when the window does not accept the paste.
+- Language menu in the popup header: translate the same text into Language A, Language B or any extra
+  language ticked in Settings. The pick applies to that popup only.
+- **What's new** window, from the tray menu and About, listing every version and its changes. After an
+  update, a notification links to it.
+
+### Fixed
+- The Windows release build, which stopped at package restore with a newer .NET SDK.
+
+## [0.1.0] - 2026-11-15
+
+The first build, not published as a release.
 
 ### Added
 - Translate the selected text with Ctrl+C+C in any app. The popup opens next to the cursor, stays inside

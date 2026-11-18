@@ -26,6 +26,7 @@ public static class PopupText
     public const string BothExhausted = "Monthly limit reached on both engines";
     public const string NoAnswer = "The translation service did not answer";
     public const string NotTranslatable = "This text could not be translated";
+    public const string ReplaceFailed = "Could not paste into that window. Use Copy instead";
 
     public static string LimitReached(EngineId engine) => $"Monthly limit reached on {engine.DisplayName()}";
 

@@ -183,9 +183,48 @@ public class TranslationServiceTests
     }
 
     [Fact]
+    public void Replace_failure_message_points_to_copy()
+    {
+        Assert.Contains("Copy", PopupText.ReplaceFailed, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Too_long_message_includes_the_limit()
     {
         Assert.Equal("Too long: the limit is 5,000 characters", PopupText.TooLong(5000));
+    }
+
+    [Fact]
+    public async Task A_picked_language_is_never_redirected()
+    {
+        // The user picked English; the engine says the text is English. Translate to English anyway.
+        var translator = new ScriptedTranslator().Answer("Hello", detected: Lang.En);
+
+        var outcome = await Service(DetectionResult.Unknown, translator)
+            .TranslateAsync("Hello", new TranslationDirection(null, Lang.En), CancellationToken.None);
+
+        Assert.IsType<TranslationOutcome.Success>(outcome);
+        Assert.Single(translator.Calls);
+    }
+
+    [Fact]
+    public void Language_choices_are_A_B_then_extras()
+    {
+        var settings = new AppSettings { LanguageA = "en", LanguageB = "es", ExtraLanguages = new LanguageList(["fr", "de"]) }.Normalize();
+
+        var choices = Service(DetectionResult.Unknown, new ScriptedTranslator(), settings).LanguageChoices();
+
+        Assert.Equal(["en", "es", "fr", "de"], choices.Select(l => l.Code));
+    }
+
+    [Fact]
+    public void Language_choices_skip_unknown_extras()
+    {
+        var settings = new AppSettings { ExtraLanguages = new LanguageList(["xx", "it"]) };
+
+        var choices = Service(DetectionResult.Unknown, new ScriptedTranslator(), settings).LanguageChoices();
+
+        Assert.Equal(["en", "es", "it"], choices.Select(l => l.Code));
     }
 
     [Fact]

@@ -68,6 +68,62 @@
       </Setter>
     </Style>
 
+    <!-- The target language in the header: looks like text, opens the language menu. -->
+    <Style x:Key="PickerButton" TargetType="ToggleButton">
+      <Setter Property="Foreground" Value="{DynamicResource Theme.Foreground}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Padding" Value="5,2" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <Border x:Name="Bg" CornerRadius="4" Background="Transparent" BorderThickness="1"
+                    BorderBrush="{DynamicResource Theme.Border}" Padding="{TemplateBinding Padding}">
+              <ContentPresenter VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Theme.SurfaceHover}" />
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Theme.SurfaceHover}" />
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Bg" Property="BorderBrush" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource Theme.Secondary}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- One row in the language menu. -->
+    <Style x:Key="MenuRow" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource Theme.Foreground}" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Padding" Value="10,5" />
+      <Setter Property="MinWidth" Value="170" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bg" CornerRadius="4" Background="Transparent" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Theme.SurfaceHover}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource TextButton}">
       <Setter Property="Foreground" Value="{DynamicResource Theme.AccentForeground}" />
       <Setter Property="Background" Value="{DynamicResource Theme.Accent}" />
@@ -95,8 +151,31 @@
                 Content="&#xE711;" ToolTip="Close (Esc)" Click="OnCloseClick" />
         <Button x:Name="SwapButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}"
                 Content="&#xE8AB;" ToolTip="Translate the other way" Click="OnSwapClick" />
-        <TextBlock x:Name="DirectionText" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"
-                   Foreground="{DynamicResource Theme.Secondary}" Text="…" />
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock x:Name="DirectionText" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                     Foreground="{DynamicResource Theme.Secondary}" Text="…" />
+          <ToggleButton x:Name="TargetButton" Style="{StaticResource PickerButton}" Margin="5,0,0,0"
+                        Visibility="Collapsed" ToolTip="Translate into another language">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="TargetText" VerticalAlignment="Center" />
+              <TextBlock Margin="5,1,0,0" VerticalAlignment="Center" FontSize="9" Text="&#xE70D;"
+                         FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            </StackPanel>
+          </ToggleButton>
+          <Popup x:Name="TargetMenu" PlacementTarget="{Binding ElementName=TargetButton}" Placement="Bottom"
+                 VerticalOffset="4" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade"
+                 IsOpen="{Binding IsChecked, ElementName=TargetButton, Mode=TwoWay}">
+            <Border Background="{DynamicResource Theme.Background}" BorderBrush="{DynamicResource Theme.Border}"
+                    BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,0,6,6">
+              <Border.Effect>
+                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.25" />
+              </Border.Effect>
+              <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="TargetList" />
+              </ScrollViewer>
+            </Border>
+          </Popup>
+        </StackPanel>
       </DockPanel>
 
       <!-- One-off notice such as "Switched to Google" -->
@@ -128,6 +207,8 @@
       <!-- Footer buttons -->
       <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,4,0">
         <Button x:Name="ActionButton" Style="{StaticResource TextButton}" Visibility="Collapsed" Click="OnActionClick" />
+        <Button x:Name="ReplaceButton" Style="{StaticResource TextButton}" Margin="8,0,0,0" Content="Replace"
+                ToolTip="Paste the translation over the text you selected" Visibility="Collapsed" Click="OnReplaceClick" />
         <Button x:Name="CopyButton" Style="{StaticResource AccentButton}" Margin="8,0,0,0" Content="Copy"
                 Visibility="Collapsed" Click="OnCopyClick" />
       </StackPanel>

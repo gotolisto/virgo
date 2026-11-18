@@ -11,6 +11,9 @@
     <TextBlock Margin="0,12,0,0">
       <Hyperlink x:Name="RepoLink" Click="OnRepoClick"><Run x:Name="RepoText" /></Hyperlink>
     </TextBlock>
+    <TextBlock Margin="0,6,0,0">
+      <Hyperlink Click="OnWhatsNewClick">What's new in each version</Hyperlink>
+    </TextBlock>
     <TextBlock Margin="0,12,0,0" FontSize="12" Opacity="0.75" TextWrapping="Wrap" MaxWidth="320"
                Text="Selected text goes only to the engine you chose, over HTTPS. No history, no telemetry." />
     <Button Margin="0,20,0,0" HorizontalAlignment="Right" MinWidth="88" Content="Close" IsCancel="True" IsDefault="True" Click="OnCloseClick" />

@@ -84,13 +84,16 @@ internal sealed partial class AppHost : IDisposable
         _hook = new WindowsKeyboardHook(settings.DoublePressInterval, _loggers.CreateLogger<WindowsKeyboardHook>());
         _controller = new TranslationController(
             _app.Dispatcher, _hook, new ClipboardTextFetcher(new WindowsClipboardReader()), locator, _service, popup,
+            new WindowsTextReplacer(_loggers.CreateLogger<WindowsTextReplacer>()),
+            () => _settings.Current,
+            message => _tray?.ShowNotification(AppInfo.Name, message),
             _loggers.CreateLogger<TranslationController>());
         _controller.OpenSettingsRequested += (_, _) => OpenSettings();
 
         _tray = new WindowsTrayIcon(OpenSettings);
         _updates = _createUpdates();
         _trayController = new TrayController(
-            _tray, _hook, _translator, _updates, OpenSettings, OpenAbout, Quit, _loggers.CreateLogger<TrayController>());
+            _tray, _hook, _translator, _updates, OpenSettings, OpenAbout, OpenWhatsNew, Quit, _loggers.CreateLogger<TrayController>());
         _controller.Translated += (_, _) => _trayController.UsageChanged();
 
         _settings.Changed += OnSettingsChanged;
@@ -102,6 +105,8 @@ internal sealed partial class AppHost : IDisposable
         _trayController.Start();
         _updates.Start();
         LogStarted(_logger, AppInfo.Version);
+
+        AnnounceUpdateIfAny(settings);
 
         if (!settings.FirstRunCompleted)
         {
@@ -136,7 +141,39 @@ internal sealed partial class AppHost : IDisposable
         ShowWindow(() => new SettingsWindow(WindowContext()));
     }
 
-    private void OpenAbout() => ShowWindow(() => new AboutWindow(_theme?.IsDark ?? false));
+    private void OpenAbout() => ShowWindow(() => new AboutWindow(_theme?.IsDark ?? false, OpenWhatsNew));
+
+    private void OpenWhatsNew() => ShowWindow(() => new WhatsNewWindow(_theme?.IsDark ?? false));
+
+    /// <summary>
+    /// After an update, a notification links to the new version's notes. The version is then recorded, so this
+    /// happens once per update (and never on a fresh install).
+    /// </summary>
+    private void AnnounceUpdateIfAny(AppSettings settings)
+    {
+        if (!Core.Versioning.AppVersion.TryParse(AppInfo.Version, out var current))
+        {
+            return;
+        }
+
+        if (Core.Versioning.UpdateAnnouncement.ShouldAnnounce(settings.LastSeenVersion, current, settings.FirstRunCompleted))
+        {
+            var entry = Core.Versioning.Changelog.Find(WhatsNewWindow.Load(), current);
+            var headline = entry?.Sections.SelectMany(s => s.Items).FirstOrDefault()?.Replace("**", string.Empty, StringComparison.Ordinal);
+            _tray?.ShowNotification(
+                $"Updated to {AppInfo.Name} {current}",
+                headline is null ? "Click to see what's new." : $"{headline} Click to see everything that's new.",
+                OpenWhatsNew);
+            var previous = settings.LastSeenVersion ?? "unknown";
+            var now = current.ToString();
+            LogUpdated(_logger, previous, now);
+        }
+
+        if (settings.LastSeenVersion != current.ToString())
+        {
+            _settings.Save(_settings.Current with { LastSeenVersion = current.ToString() });
+        }
+    }
 
     /// <summary>One app window at a time; asking again brings the open one forward.</summary>
     private void ShowWindow(Func<Window> create)
@@ -199,6 +236,9 @@ internal sealed partial class AppHost : IDisposable
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tray Translator {Version} started")]
     private static partial void LogStarted(ILogger logger, string version);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Updated from {Previous} to {Current}")]
+    private static partial void LogUpdated(ILogger logger, string previous, string current);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Quit from the tray")]
     private static partial void LogQuit(ILogger logger);

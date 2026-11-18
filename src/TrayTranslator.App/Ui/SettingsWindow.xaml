@@ -51,6 +51,17 @@
         </Grid>
         <TextBlock Style="{StaticResource Hint}" Text="A becomes B and B becomes A. Text in any other language is translated into Language A." />
 
+        <TextBlock Margin="0,14,0,0" Text="More languages in the popup's language menu" />
+        <TextBlock Style="{StaticResource Hint}"
+                   Text="Click the target language in the popup header to translate into one of these instead. Language A and B are always in the menu; the automatic A ⇄ B choice does not change." />
+        <ItemsControl x:Name="ExtraLanguages" Margin="0,8,0,0">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="3" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+        </ItemsControl>
+
         <TextBlock Style="{StaticResource Section}" Text="Engines" />
         <TextBlock Text="Default engine" />
         <ComboBox x:Name="DefaultEngine" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="160" />
@@ -73,6 +84,10 @@
                   TickPlacement="BottomRight" ValueChanged="OnIntervalChanged" />
         </DockPanel>
         <TextBlock Style="{StaticResource Hint}" Text="Longest pause allowed between the two presses." />
+
+        <CheckBox x:Name="ReplaceAutomatically" Margin="0,12,0,0" Content="Replace the selected text automatically (no popup)" />
+        <TextBlock Style="{StaticResource Hint}"
+                   Text="Ctrl+C+C pastes the translation over your selection. The popup only appears for errors, or when the window does not accept the paste." />
 
         <TextBlock Margin="0,14,0,0" Text="Maximum text length (characters)" />
         <TextBox x:Name="MaxTextLength" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="160" />
