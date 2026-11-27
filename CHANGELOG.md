@@ -12,6 +12,12 @@ Versions follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH): 
 
 ## [Unreleased]
 
+### Added
+- **AI actions.** Select text, press a shortcut of your own twice (for example Alt+C+C), and Claude rewrites
+  the selection in place following your instruction, such as "polish this text" or "polish it and return
+  it in Spanish". Set up the Claude API key, the model and the actions under Settings → *AI actions
+  (Claude)*. Two examples are included, switched off until you turn them on.
+
 ## [0.2.2] - 2026-11-18
 
 ### Fixed

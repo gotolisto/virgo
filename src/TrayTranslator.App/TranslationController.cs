@@ -73,6 +73,7 @@ internal sealed partial class TranslationController : IDisposable
         _popup.TargetPicked += OnTargetPicked;
         _popup.OpenSettingsRequested += OnOpenSettingsRequested;
         _popup.IsVisibleChanged += OnPopupVisibleChanged;
+        _popup.Claimed += OnPopupClaimed;
     }
 
     public event EventHandler? OpenSettingsRequested;
@@ -83,6 +84,7 @@ internal sealed partial class TranslationController : IDisposable
     public void Dispose()
     {
         _hotkey.Triggered -= OnTriggered;
+        _popup.Claimed -= OnPopupClaimed;
         _current?.Cancel();
         _current?.Dispose();
     }
@@ -96,6 +98,18 @@ internal sealed partial class TranslationController : IDisposable
         }
     }
 
+    /// <summary>An AI action took the popup over: the translation in flight is no longer wanted.</summary>
+    private void OnPopupClaimed(object? sender, EventArgs e)
+    {
+        if (!_popup.IsClaimedBy(this))
+        {
+            _current?.Cancel();
+        }
+    }
+
+    /// <summary>The popup's buttons are for whoever handled the last gesture.</summary>
+    private bool OwnsPopup => _popup.IsClaimedBy(this);
+
     private void OnTriggered(object? sender, EventArgs e) =>
         _dispatcher.BeginInvoke(() => HandleTriggerAsync().Forget(_logger));
 
@@ -103,6 +117,7 @@ internal sealed partial class TranslationController : IDisposable
     {
         // Remember the window the text was selected in before anything of ours can take focus, and start asking
         // it (in the background, alongside the translation) whether the selection can be replaced.
+        _popup.Claim(this);
         var target = _replacer.CaptureFocus();
         var editability = _replacer.ProbeEditabilityAsync(target, CancellationToken.None);
         var cts = Restart();
@@ -275,7 +290,7 @@ internal sealed partial class TranslationController : IDisposable
 
     private void OnSwapRequested(object? sender, EventArgs e)
     {
-        if (_shownDirection is null)
+        if (!OwnsPopup || _shownDirection is null)
         {
             return;
         }
@@ -286,18 +301,45 @@ internal sealed partial class TranslationController : IDisposable
     }
 
     /// <summary>A language picked in the popup's menu: same text, that target, this popup only.</summary>
-    private void OnTargetPicked(object? sender, Language target) =>
-        RunAsync(DirectionResolver.ToTarget(_shownSource ?? _shownDirection?.Source, target), Restart()).Forget(_logger);
+    private void OnTargetPicked(object? sender, Language target)
+    {
+        if (OwnsPopup)
+        {
+            RunAsync(DirectionResolver.ToTarget(_shownSource ?? _shownDirection?.Source, target), Restart()).Forget(_logger);
+        }
+    }
 
-    private void OnRetryRequested(object? sender, EventArgs e) => RunAsync(_forced, Restart()).Forget(_logger);
+    private void OnRetryRequested(object? sender, EventArgs e)
+    {
+        if (OwnsPopup)
+        {
+            RunAsync(_forced, Restart()).Forget(_logger);
+        }
+    }
 
-    private void OnOpenSettingsRequested(object? sender, EventArgs e) => OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+    private void OnOpenSettingsRequested(object? sender, EventArgs e)
+    {
+        if (OwnsPopup)
+        {
+            OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
-    private void OnReplaceRequested(object? sender, string translation) =>
-        ReplaceOrFallBackAsync(translation).Forget(_logger);
+    private void OnReplaceRequested(object? sender, string translation)
+    {
+        if (OwnsPopup)
+        {
+            ReplaceOrFallBackAsync(translation).Forget(_logger);
+        }
+    }
 
     private void OnCopyRequested(object? sender, string text)
     {
+        if (!OwnsPopup)
+        {
+            return;
+        }
+
         // The clipboard can be locked by another app for a moment; retry like the read side does.
         for (var attempt = 0; attempt <= ClipboardTextFetcher.DefaultMaxRetries; attempt++)
         {

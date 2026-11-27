@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using TrayTranslator.App.Interop;
 using TrayTranslator.App.Platform;
+using TrayTranslator.Core.AiActions;
 using TrayTranslator.Core.Languages;
 using TrayTranslator.Core.Platform;
 using TrayTranslator.Core.Popup;
@@ -14,8 +15,12 @@ using TrayTranslator.Core.Translation;
 namespace TrayTranslator.App.Ui;
 
 /// <summary>
-/// The translation popup. Created once at startup and kept hidden, then reused for every Ctrl+C+C.
+/// The popup. Created once at startup and kept hidden, then reused for every Ctrl+C+C and AI action.
 /// Positions itself in physical pixels next to the cursor, inside the cursor monitor's working area.
+/// <para>
+/// The translator and the AI actions share it: whoever handles a gesture first calls <see cref="Claim"/>, and
+/// only the current claimant acts on the popup's buttons.
+/// </para>
 /// </summary>
 public partial class PopupWindow : Window
 {
@@ -24,6 +29,7 @@ public partial class PopupWindow : Window
     private ScreenPoint _anchor;
     private PopupAction _action;
     private IReadOnlyList<Language> _choices = [];
+    private object? _claimant;
 
     internal PopupWindow(ICursorLocator locator)
     {
@@ -37,6 +43,9 @@ public partial class PopupWindow : Window
         Deactivated += (_, _) => HideAndReset();
         PreviewKeyDown += OnPreviewKeyDown;
     }
+
+    /// <summary>Raised when a different claimant takes the popup over; the previous one should drop its work.</summary>
+    public event EventHandler? Claimed;
 
     public event EventHandler? SwapRequested;
 
@@ -55,12 +64,27 @@ public partial class PopupWindow : Window
 
     private nint Handle => new WindowInteropHelper(this).Handle;
 
+    /// <summary>Makes <paramref name="claimant"/> the one the popup's buttons are for.</summary>
+    public void Claim(object claimant)
+    {
+        if (ReferenceEquals(_claimant, claimant))
+        {
+            return;
+        }
+
+        _claimant = claimant;
+        Claimed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public bool IsClaimedBy(object claimant) => ReferenceEquals(_claimant, claimant);
+
     /// <summary>The languages offered in the header's menu, in order.</summary>
     public void SetChoices(IReadOnlyList<Language> choices) => _choices = choices;
 
     /// <summary>Shows the spinner at <paramref name="cursor"/>; <paramref name="direction"/> is null while unknown.</summary>
     public void ShowLoading(ScreenPoint cursor, TranslationDirection? direction)
     {
+        SetMode(ai: false);
         SetHeader(direction?.Source, direction?.Target, pickable: false);
         NoticeText.Visibility = Visibility.Collapsed;
         SetBody(loading: true);
@@ -72,6 +96,7 @@ public partial class PopupWindow : Window
     /// <param name="cursor">Show the popup at this point first; null when it is already showing.</param>
     public void ShowTranslation(Language? source, Language target, string text, string? notice, bool canReplace, ScreenPoint? cursor = null)
     {
+        SetMode(ai: false);
         SetHeader(source, target, pickable: true);
         SetNotice(notice);
         ResultText.Text = text;
@@ -90,6 +115,7 @@ public partial class PopupWindow : Window
     /// <param name="direction">The direction the failed request used; null when there was none (e.g. too long).</param>
     public void ShowMessage(ScreenPoint? cursor, TranslationDirection? direction, string message, PopupAction action, string? actionLabel, bool canSwap)
     {
+        SetMode(ai: false);
         SetHeader(direction?.Source, direction?.Target, pickable: direction is not null, emptyWhenUnknown: direction is null);
         NoticeText.Visibility = Visibility.Collapsed;
         MessageText.Text = message;
@@ -98,6 +124,54 @@ public partial class PopupWindow : Window
         CopyButton.Visibility = Visibility.Collapsed;
         ReplaceButton.Visibility = Visibility.Collapsed;
         SetAction(action, actionLabel);
+        if (cursor is { } point)
+        {
+            ShowAt(point);
+        }
+    }
+
+    /// <summary>An AI action is running: its name in the header and the spinner.</summary>
+    public void ShowAiWorking(ScreenPoint cursor, string title)
+    {
+        SetMode(ai: true);
+        SetTitle(title);
+        NoticeText.Visibility = Visibility.Collapsed;
+        SetBody(loading: true);
+        ShowAt(cursor);
+    }
+
+    /// <summary>An AI action's result, with Copy (and Replace when <paramref name="canReplace"/>).</summary>
+    /// <param name="cursor">Show the popup at this point first; null when it is already showing.</param>
+    public void ShowAiResult(string title, string text, string? notice, bool canReplace, ScreenPoint? cursor = null)
+    {
+        SetMode(ai: true);
+        SetTitle(title);
+        SetNotice(notice);
+        ResultText.Text = text;
+        ResultText.ScrollToHome();
+        SetBody(result: true);
+        CopyButton.Visibility = Visibility.Visible;
+        ReplaceButton.Visibility = canReplace ? Visibility.Visible : Visibility.Collapsed;
+        SetAction(PopupAction.None, null);
+        if (cursor is { } point)
+        {
+            ShowAt(point);
+        }
+    }
+
+    /// <summary>Why an AI action did not finish, with a button for what to do about it.</summary>
+    /// <param name="cursor">Show the popup at this point first; null when it is already showing.</param>
+    public void ShowAiMessage(ScreenPoint? cursor, string title, PopupMessage message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        SetMode(ai: true);
+        SetTitle(title);
+        NoticeText.Visibility = Visibility.Collapsed;
+        MessageText.Text = message.Message;
+        SetBody(message: true);
+        CopyButton.Visibility = Visibility.Collapsed;
+        ReplaceButton.Visibility = Visibility.Collapsed;
+        SetAction(message.Action, message.ActionLabel);
         if (cursor is { } point)
         {
             ShowAt(point);
@@ -173,6 +247,21 @@ public partial class PopupWindow : Window
             SpinnerRotation.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, null);
         }
     }
+
+    /// <summary>Translation shows languages and the swap button; an AI action shows its name instead.</summary>
+    private void SetMode(bool ai)
+    {
+        SwapButton.Visibility = ai ? Visibility.Collapsed : Visibility.Visible;
+        LoadingText.Text = ai ? AiPopupText.Working : "Translating…";
+        ReplaceButton.ToolTip = ai ? "Paste the result over the text you selected" : "Paste the translation over the text you selected";
+        if (ai)
+        {
+            TargetButton.IsChecked = false;
+            TargetButton.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void SetTitle(string title) => DirectionText.Text = $"✦ {title}";
 
     /// <summary>"ES →" plus the target as a button that opens the language menu.</summary>
     private void SetHeader(Language? source, Language? target, bool pickable, bool emptyWhenUnknown = false)

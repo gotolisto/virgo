@@ -8,11 +8,11 @@ using TrayTranslator.Core.Platform;
 namespace TrayTranslator.App.Platform;
 
 /// <summary>
-/// Global low-level keyboard hook (WH_KEYBOARD_LL) that detects Ctrl+C+C.
+/// Global low-level keyboard hook (WH_KEYBOARD_LL) that detects Ctrl+C+C and the AI action shortcuts.
 /// <para>
 /// The hook runs on its own thread with its own message loop, so a busy UI thread can never make Windows
-/// time the hook out. The callback only copies three numbers into a channel and passes every key on
-/// unchanged (<c>CallNextHookEx</c>); the detector runs on a separate worker thread.
+/// time the hook out. The callback only copies a few numbers into a channel and passes every key on
+/// unchanged (<c>CallNextHookEx</c>); the detectors run on a separate worker thread.
 /// </para>
 /// </summary>
 internal sealed partial class WindowsKeyboardHook : IHotkeyListener
@@ -22,6 +22,7 @@ internal sealed partial class WindowsKeyboardHook : IHotkeyListener
 
     private readonly ILogger<WindowsKeyboardHook> _logger;
     private readonly DoublePressDetector _detector;
+    private readonly ShortcutDetector _shortcuts;
     private readonly Channel<KeyEvent> _events = Channel.CreateBounded<KeyEvent>(
         new BoundedChannelOptions(256) { SingleReader = true, SingleWriter = true, FullMode = BoundedChannelFullMode.DropOldest });
 
@@ -36,14 +37,27 @@ internal sealed partial class WindowsKeyboardHook : IHotkeyListener
     {
         _logger = logger;
         _detector = new DoublePressDetector(interval);
+        _shortcuts = new ShortcutDetector(interval);
     }
 
     public event EventHandler? Triggered;
 
+    public event EventHandler<Shortcut>? ShortcutTriggered;
+
     public TimeSpan Interval
     {
         get => _detector.Interval;
-        set => _detector.Interval = value;
+        set
+        {
+            _detector.Interval = value;
+            _shortcuts.Interval = value;
+        }
+    }
+
+    public IReadOnlyList<Shortcut> Shortcuts
+    {
+        get => _shortcuts.Shortcuts;
+        set => _shortcuts.Shortcuts = value;
     }
 
     public bool IsPaused
@@ -158,15 +172,20 @@ internal sealed partial class WindowsKeyboardHook : IHotkeyListener
                 var ours = (data->flags & User32.LLKHF_INJECTED) != 0 && data->dwExtraInfo == User32.InjectedMarker;
                 if ((isDown || isUp) && !ours)
                 {
-                    var kind = data->vkCode switch
+                    var vk = data->vkCode;
+                    var kind = vk switch
                     {
                         User32.VK_CONTROL or User32.VK_LCONTROL or User32.VK_RCONTROL => KeyKind.Ctrl,
+                        User32.VK_SHIFT or User32.VK_LSHIFT or User32.VK_RSHIFT => KeyKind.Shift,
+                        User32.VK_MENU or User32.VK_LMENU or User32.VK_RMENU => KeyKind.Alt,
+                        User32.VK_LWIN or User32.VK_RWIN => KeyKind.Win,
                         User32.VK_C => KeyKind.C,
                         _ => KeyKind.Other,
                     };
+                    var character = vk is >= User32.VK_A and <= User32.VK_Z or >= User32.VK_0 and <= User32.VK_9 ? (char)vk : '\0';
 
                     // Never blocks: the channel drops the oldest event if the worker ever falls behind.
-                    self._events.Writer.TryWrite(new KeyEvent(kind, isDown, Environment.TickCount64));
+                    self._events.Writer.TryWrite(new KeyEvent(kind, isDown, Environment.TickCount64, character));
                 }
             }
 #pragma warning disable CA1031 // An exception must never escape into Windows from a hook callback.
@@ -188,24 +207,39 @@ internal sealed partial class WindowsKeyboardHook : IHotkeyListener
             {
                 _resetRequested = false;
                 _detector.Reset();
+                _shortcuts.Reset();
             }
 
-            if (_paused || !_detector.Process(e))
+            if (_paused)
             {
                 continue;
             }
 
-            LogTriggered(_logger);
-            try
+            if (_detector.Process(e))
             {
-                Triggered?.Invoke(this, EventArgs.Empty);
+                LogTriggered(_logger);
+                Raise(() => Triggered?.Invoke(this, EventArgs.Empty));
             }
+
+            if (_shortcuts.Process(e) is { } shortcut)
+            {
+                LogShortcut(_logger, shortcut);
+                Raise(() => ShortcutTriggered?.Invoke(this, shortcut));
+            }
+        }
+    }
+
+    private void Raise(Action raise)
+    {
+        try
+        {
+            raise();
+        }
 #pragma warning disable CA1031 // A failing handler must not stop the hook from working.
-            catch (Exception ex)
+        catch (Exception ex)
 #pragma warning restore CA1031
-            {
-                LogHandlerFailed(_logger, ex);
-            }
+        {
+            LogHandlerFailed(_logger, ex);
         }
     }
 
@@ -223,6 +257,9 @@ internal sealed partial class WindowsKeyboardHook : IHotkeyListener
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Ctrl+C+C detected")]
     private static partial void LogTriggered(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "{Shortcut} pressed twice")]
+    private static partial void LogShortcut(ILogger logger, Shortcut shortcut);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Trigger handler failed")]
     private static partial void LogHandlerFailed(ILogger logger, Exception ex);

@@ -8,8 +8,11 @@ translation appears in a popup next to the cursor.
   translated into your first language.
 - Uses **DeepL API Free** and **Google Cloud Translation**, with your own keys. When one runs out of
   its monthly allowance, the other takes over.
+- **AI actions:** select text, press a shortcut of your own twice (for example **Alt+C+C**), and Claude
+  rewrites it in place, following an instruction you write: "polish this", "polish this and return it in
+  Spanish", "make it more formal".
 - Leaves your clipboard alone unless you press **Copy** in the popup.
-- No history, no telemetry. The selected text goes only to the engine in use, over HTTPS.
+- No history, no telemetry. The selected text goes only to the service in use, over HTTPS.
 
 ## Using it
 
@@ -37,6 +40,45 @@ whether the selected text can be edited. Text on a web page, a label or a link c
 the translation instead, even with automatic replace on, and the Replace button is hidden. If an app does
 not say, the paste is tried as before. With automatic replace on, the popup also appears for errors and for text that is too
 long, and "Switched to …" shows as a notification.
+
+## AI actions
+
+An AI action is a shortcut plus an instruction for Claude. Select text in any app, hold the shortcut's
+modifier and press its key twice (Alt+C+C: hold **Alt**, press **C** twice). The app copies the selection,
+Claude follows the instruction, and the result replaces your selection. A small popup with the action's
+name shows while Claude works; press Esc to cancel.
+
+Set them up under Settings → *AI actions (Claude)*:
+
+1. Paste your Claude API key and press **Test** (see [Claude API](#claude-api) below).
+2. Pick a model. **Claude Opus 5.5** gives the best results; **Sonnet 5.5** and **Haiku 5.5** answer faster
+   and cost less.
+3. For each action, write a name and the instruction, choose the modifier (**Hold**) and the key
+   (**Press twice**), and tick **Active**. **Add action** adds another, up to 20.
+
+The app starts with two examples, both off until you tick **Active**:
+
+| Action | Shortcut | Instruction |
+| --- | --- | --- |
+| Polish | Alt+C+C | Fix spelling, grammar and punctuation, keep meaning, tone and length, reply in the text's own language |
+| Polish in Spanish | Alt+S+S | Polish the text and return it in Spanish |
+
+Things to know:
+
+- **Fn can't be used.** On almost every keyboard the Fn key is handled inside the keyboard and Windows
+  never sees it. Use Alt, Ctrl + Alt, Ctrl + Shift, Alt + Shift or Win + Alt.
+- **The keys still reach the app you are in.** Tray Translator only listens; it never swallows keys. Pick
+  a combination your apps do not use. In Office, Alt with a letter can open a ribbon tab.
+- Ctrl with C is reserved for translation. Two active actions cannot share a shortcut.
+- Unlike Ctrl+C+C, the shortcut does not copy anything itself, so the app presses Ctrl+C for you once you
+  let go of the keys. Afterwards it puts your clipboard text back. If the clipboard held something other
+  than plain text (an image, a file, formatted text), it is put back as plain text, or, for an image or
+  file, the selected text stays on the clipboard.
+- As with Replace, text that cannot be edited (a web page, a label) shows the result in the popup with
+  **Copy** instead, and so does a window that does not accept the paste.
+- Nothing is pasted when Claude declines the request or the answer is cut off; the popup says why.
+- With some keyboard layouts AltGr counts as Ctrl + Alt, so a Ctrl + Alt action can fire when you type
+  the same AltGr character twice. Use plain Alt for those keys if that happens.
 
 ## Getting API keys
 
@@ -74,6 +116,20 @@ To make sure Google can never bill you, also set a daily cap in Google Cloud: **
 filter by *Cloud Translation API*, and set **"v2 and v3 general model characters per day"** to **16,000**
 (16,000 × 31 days stays under the free 500,000). When Google reaches that cap, Tray Translator switches to
 DeepL until the cap resets at midnight US Pacific time, then returns to Google.
+
+### Claude API
+
+AI actions need a key for the Claude API. Translation does not.
+
+1. Go to <https://platform.claude.com/settings/keys>, sign in or create an account, and add credit under
+   **Billing**. The Claude API is pay as you go, separate from a Claude.ai subscription.
+2. Create a key and copy it (it starts with `sk-ant-`).
+3. Paste it into Settings → *AI actions (Claude)* and press **Test**. Testing lists the models and costs
+   nothing.
+
+Each action is one request to Claude, billed to your account by the tokens it uses (about 4 characters a
+token). Rewriting a paragraph typically costs around a cent on Opus 5.5 and a fraction of that on Sonnet
+and Haiku. Set a spending limit in the Claude Console if you want a hard cap.
 
 ## Install
 
@@ -146,8 +202,8 @@ On Linux or macOS, write `dotnet vpk "[win]" pack …` to cross-package for Wind
 
 | Project | What it holds |
 | --- | --- |
-| `src/TrayTranslator.Core` | Everything that is not Windows-specific: the Ctrl+C+C detector, language detection and direction, the DeepL and Google clients, failover, usage tracking, settings and key storage. No WPF or Windows references. |
-| `src/TrayTranslator.App` | The WPF app: popup, settings, first-run and About windows, tray icon, and the Windows implementations of Core's platform interfaces (`IHotkeyListener`, `IClipboardReader`, `ITrayIcon`, `IAutostart`, `ISecretStore`, `ICursorLocator`). |
+| `src/TrayTranslator.Core` | Everything that is not Windows-specific: the Ctrl+C+C and AI action shortcut detectors, language detection and direction, the DeepL and Google clients, failover, usage tracking, the Claude client for AI actions (official Anthropic SDK), settings and key storage. No WPF or Windows references. |
+| `src/TrayTranslator.App` | The WPF app: popup, settings, first-run and About windows, tray icon, and the Windows implementations of Core's platform interfaces (`IHotkeyListener`, `IClipboardReader`, `ISelectionCopier`, `ITrayIcon`, `IAutostart`, `ISecretStore`, `ICursorLocator`). |
 | `tests/TrayTranslator.Tests` | xUnit tests for Core. |
 
 ## Versions and releasing
@@ -202,8 +258,9 @@ token. The workflow needs no stored secrets; it uses the `GITHUB_TOKEN` that Git
 
 ## Privacy
 
-- The selected text is sent only to the engine that translates it (DeepL or Google), over HTTPS.
+- The selected text is sent only to the engine that translates it (DeepL or Google), over HTTPS. For an
+  AI action, it is sent only to Claude (Anthropic's API), together with the action's instruction.
 - Language detection runs locally (NTextCat), so it sends nothing and costs no characters.
 - Nothing is kept: no history of texts or translations, and no telemetry.
-- Network use: the translation request, DeepL's usage endpoint (to show usage and notice when the
+- Network use: the translation request, the Claude request for an AI action, DeepL's usage endpoint (to show usage and notice when the
   allowance resets), and GitHub Releases for updates.
