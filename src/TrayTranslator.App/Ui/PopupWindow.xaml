@@ -191,7 +191,7 @@
               <RotateTransform x:Name="SpinnerRotation" />
             </Ellipse.RenderTransform>
           </Ellipse>
-          <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Theme.Secondary}" Text="Translating…" />
+          <TextBlock x:Name="LoadingText" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Theme.Secondary}" Text="Translating…" />
         </StackPanel>
 
         <TextBox x:Name="ResultText" Visibility="Collapsed" IsReadOnly="True" IsReadOnlyCaretVisible="False"

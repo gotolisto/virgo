@@ -92,6 +92,69 @@
         <TextBlock Margin="0,14,0,0" Text="Maximum text length (characters)" />
         <TextBox x:Name="MaxTextLength" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="160" />
 
+        <TextBlock Style="{StaticResource Section}" Text="AI actions (Claude)" />
+        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,0"
+                   Text="Select text in any app and press an action's shortcut twice, for example Alt+C+C: hold Alt and press C twice. Claude follows the action's instruction and the result replaces your selection." />
+
+        <ui:ApiKeyField x:Name="ClaudeKey" Margin="0,12,0,0" />
+        <TextBlock Style="{StaticResource Hint}"
+                   Text="Claude bills your Anthropic account for each action. The selected text goes only to Claude, over HTTPS." />
+
+        <TextBlock Margin="0,12,0,0" Text="Model" />
+        <ComboBox x:Name="AiModel" Margin="0,4,0,0" HorizontalAlignment="Left" MinWidth="280"
+                  DisplayMemberPath="Label" SelectedValuePath="Id" />
+
+        <ItemsControl x:Name="AiActionRows" Margin="0,4,0,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="{x:Type ui:AiActionRow}">
+              <Border Margin="0,10,0,0" Padding="12,10" CornerRadius="6" BorderThickness="1"
+                      BorderBrush="{DynamicResource Theme.Border}">
+                <StackPanel>
+                  <DockPanel LastChildFill="False">
+                    <CheckBox DockPanel.Dock="Left" VerticalAlignment="Center" Content="Active"
+                              IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button DockPanel.Dock="Right" Content="Remove" MinWidth="72" Click="OnRemoveAiActionClick" />
+                  </DockPanel>
+                  <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="12" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="6" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                      <TextBlock Text="Name" />
+                      <TextBox Margin="0,4,0,0" MaxLength="40"
+                               Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                      <TextBlock Text="Hold" />
+                      <ComboBox Margin="0,4,0,0" MinWidth="120" DisplayMemberPath="Label" SelectedValuePath="Value"
+                                ItemsSource="{x:Static ui:AiActionRow.ModifierOptions}"
+                                SelectedValue="{Binding Modifiers, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                      <TextBlock Text="Press twice" />
+                      <ComboBox Margin="0,4,0,0" MinWidth="64"
+                                ItemsSource="{x:Static ui:AiActionRow.KeyOptions}"
+                                SelectedItem="{Binding Key, Mode=TwoWay}" />
+                    </StackPanel>
+                  </Grid>
+                  <TextBlock Margin="0,8,0,0" Text="Instruction for Claude" />
+                  <TextBox Margin="0,4,0,0" MinHeight="56" MaxHeight="140" AcceptsReturn="True" TextWrapping="Wrap"
+                           VerticalScrollBarVisibility="Auto" MaxLength="4000"
+                           Text="{Binding Instruction, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button x:Name="AddAiAction" Margin="0,10,0,0" HorizontalAlignment="Left" MinWidth="120"
+                Content="Add action" Click="OnAddAiActionClick" />
+        <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                   Text="The keys you press still reach the app you are in, so pick a combination it does not use (in Office, Alt with a letter can open a ribbon tab). Fn cannot be used: most keyboards handle it themselves and never tell Windows it was pressed." />
+
         <TextBlock Style="{StaticResource Section}" Text="General" />
         <CheckBox x:Name="StartWithWindows" Content="Start with Windows" />
         <CheckBox x:Name="CheckForUpdates" Margin="0,8,0,0" Content="Check for updates automatically" />

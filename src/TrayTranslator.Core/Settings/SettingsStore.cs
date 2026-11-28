@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,9 @@ public sealed partial class JsonSettingsStore : ISettingsStore
     internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
+
+        // A local file people may edit by hand: keep "Alt+C" readable instead of "Alt\u002BC".
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter() },
     };

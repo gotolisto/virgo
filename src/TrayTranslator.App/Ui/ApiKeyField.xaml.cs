@@ -1,16 +1,25 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using TrayTranslator.Core.AiActions;
 using TrayTranslator.Core.Engines;
 
 namespace TrayTranslator.App.Ui;
+
+/// <param name="Works">The key can be used: show the message in green.</param>
+/// <param name="Message">What the test found.</param>
+/// <param name="Verified">Counts as a working key (a used-up allowance still does).</param>
+internal sealed record KeyCheck(bool Works, string Message, bool Verified);
+
+/// <summary>Checks a key without spending anything. Throws only <see cref="OperationCanceledException"/>.</summary>
+internal delegate Task<KeyCheck> KeyTester(string key, CancellationToken ct);
 
 /// <summary>A masked API key box with a Test button that checks the key without spending characters.</summary>
 public partial class ApiKeyField : UserControl
 {
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
 
-    private ITranslationEngine? _engine;
+    private KeyTester? _tester;
     private string _signUpUrl = string.Empty;
     private CancellationTokenSource? _test;
 
@@ -31,11 +40,63 @@ public partial class ApiKeyField : UserControl
     /// <summary>True when the key in the box passed the last test.</summary>
     public bool IsVerified { get; private set; }
 
-    internal void Configure(string label, ITranslationEngine engine, string signUpUrl)
+    internal void Configure(string label, ITranslationEngine engine, string signUpUrl) =>
+        Configure(label, (key, ct) => TestEngineAsync(engine, key, ct), signUpUrl);
+
+    internal void Configure(string label, IAiRewriter rewriter, string signUpUrl) =>
+        Configure(label, (key, ct) => TestClaudeAsync(rewriter, key, ct), signUpUrl);
+
+    internal void Configure(string label, KeyTester tester, string signUpUrl)
     {
         LabelText.Text = label;
-        _engine = engine;
+        _tester = tester;
         _signUpUrl = signUpUrl;
+    }
+
+    private static async Task<KeyCheck> TestEngineAsync(ITranslationEngine engine, string key, CancellationToken ct)
+    {
+        try
+        {
+            await engine.TestKeyAsync(key, ct);
+            return new KeyCheck(true, "Key works", true);
+        }
+        catch (TranslationException ex)
+        {
+            var message = ex.Kind switch
+            {
+                TranslationErrorKind.MissingKey => "Enter a key first",
+                TranslationErrorKind.BadKey when engine.Id == Core.Settings.EngineId.Google =>
+                    "Key not accepted. Check the key and that the Cloud Translation API is enabled for its project",
+                TranslationErrorKind.BadKey => "Key not accepted. Check the key",
+                TranslationErrorKind.NoConnection => "No connection",
+                TranslationErrorKind.RateLimited => "Too many requests. Try again in a moment",
+                TranslationErrorKind.QuotaExceeded => "Key works, but this month's allowance is used up",
+                _ => "Could not check the key. Try again",
+            };
+            return new KeyCheck(false, message, ex.Kind == TranslationErrorKind.QuotaExceeded);
+        }
+    }
+
+    private static async Task<KeyCheck> TestClaudeAsync(IAiRewriter rewriter, string key, CancellationToken ct)
+    {
+        try
+        {
+            await rewriter.TestKeyAsync(key, ct);
+            return new KeyCheck(true, "Key works", true);
+        }
+        catch (AiException ex)
+        {
+            var message = ex.Kind switch
+            {
+                AiErrorKind.MissingKey => "Enter a key first",
+                AiErrorKind.BadKey => "Key not accepted. Check the key",
+                AiErrorKind.NoConnection => "No connection",
+                AiErrorKind.RateLimited => "Too many requests. Try again in a moment",
+                AiErrorKind.BadRequest when ex.Detail is { } detail => $"Could not check the key: {detail}",
+                _ => "Could not check the key. Try again",
+            };
+            return new KeyCheck(false, message, false);
+        }
     }
 
     private void OnSignUpClick(object sender, RoutedEventArgs e) => Links.Open(_signUpUrl);
@@ -49,7 +110,7 @@ public partial class ApiKeyField : UserControl
 
     private async void OnTestClick(object sender, RoutedEventArgs e)
     {
-        if (_engine is null)
+        if (_tester is null)
         {
             return;
         }
@@ -62,24 +123,9 @@ public partial class ApiKeyField : UserControl
 
         try
         {
-            await _engine.TestKeyAsync(Key, cts.Token);
-            ShowStatus("Key works", null, Brushes.SeaGreen);
-            SetVerified(true);
-        }
-        catch (TranslationException ex)
-        {
-            ShowStatus(ex.Kind switch
-            {
-                TranslationErrorKind.MissingKey => "Enter a key first",
-                TranslationErrorKind.BadKey when _engine.Id == Core.Settings.EngineId.Google =>
-                    "Key not accepted. Check the key and that the Cloud Translation API is enabled for its project",
-                TranslationErrorKind.BadKey => "Key not accepted. Check the key",
-                TranslationErrorKind.NoConnection => "No connection",
-                TranslationErrorKind.RateLimited => "Too many requests. Try again in a moment",
-                TranslationErrorKind.QuotaExceeded => "Key works, but this month's allowance is used up",
-                _ => "Could not check the key. Try again",
-            }, null, Brushes.IndianRed);
-            SetVerified(ex.Kind == TranslationErrorKind.QuotaExceeded);
+            var check = await _tester(Key, cts.Token);
+            ShowStatus(check.Message, null, check.Works ? Brushes.SeaGreen : Brushes.IndianRed);
+            SetVerified(check.Verified);
         }
         catch (OperationCanceledException)
         {

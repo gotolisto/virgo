@@ -18,6 +18,18 @@ internal static partial class User32
     public const uint VK_LCONTROL = 0xA2;
     public const uint VK_RCONTROL = 0xA3;
     public const uint VK_C = 0x43;
+    public const uint VK_LSHIFT = 0xA0;
+    public const uint VK_RSHIFT = 0xA1;
+    public const uint VK_LMENU = 0xA4;
+    public const uint VK_RMENU = 0xA5;
+
+    /// <summary>Letter keys are their upper-case ASCII codes ('A' = 0x41 … 'Z' = 0x5A), whatever the layout.</summary>
+    public const uint VK_A = 0x41;
+    public const uint VK_Z = 0x5A;
+
+    /// <summary>The digit keys above the letters ('0' = 0x30 … '9' = 0x39).</summary>
+    public const uint VK_0 = 0x30;
+    public const uint VK_9 = 0x39;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct KBDLLHOOKSTRUCT
@@ -130,6 +142,10 @@ internal static partial class User32
 
     [LibraryImport("user32.dll")]
     public static partial short GetAsyncKeyState(int vKey);
+
+    /// <summary>Changes every time anything is put on the clipboard.</summary>
+    [LibraryImport("user32.dll")]
+    public static partial uint GetClipboardSequenceNumber();
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

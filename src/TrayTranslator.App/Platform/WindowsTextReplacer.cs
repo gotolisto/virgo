@@ -24,8 +24,6 @@ internal sealed partial class WindowsTextReplacer : ITextReplacer
     /// <summary>How long the target app gets to read the clipboard before the old text is put back.</summary>
     private static readonly TimeSpan PasteSettle = TimeSpan.FromMilliseconds(500);
 
-    private static readonly TimeSpan Poll = TimeSpan.FromMilliseconds(20);
-
     private readonly ILogger _logger;
 
     public WindowsTextReplacer(ILogger<WindowsTextReplacer> logger)
@@ -91,7 +89,7 @@ internal sealed partial class WindowsTextReplacer : ITextReplacer
             return false;
         }
 
-        if (TargetIsElevatedAboveUs(target.Handle))
+        if (KeyboardInput.TargetIsElevatedAboveUs(target.Handle))
         {
             LogElevated(_logger);
             return false;
@@ -106,16 +104,16 @@ internal sealed partial class WindowsTextReplacer : ITextReplacer
         try
         {
             ForegroundHelper.Activate(target.Handle);
-            if (!await WaitUntilAsync(() => User32.GetForegroundWindow() == target.Handle, FocusWait, ct))
+            if (!await KeyboardInput.WaitUntilAsync(() => User32.GetForegroundWindow() == target.Handle, FocusWait, ct))
             {
                 LogNoFocus(_logger);
                 return false;
             }
 
             // Ctrl may still be held from Ctrl+C+C; a paste mixed with held keys would misfire.
-            await WaitUntilAsync(() => !AnyModifierDown(), ModifierWait, ct);
+            await KeyboardInput.WaitUntilAsync(() => !KeyboardInput.AnyModifierDown(), ModifierWait, ct);
 
-            if (!SendCtrlV())
+            if (!KeyboardInput.SendCtrlChord(User32.VK_V))
             {
                 LogInputBlocked(_logger, Marshal.GetLastPInvokeError());
                 return false;
@@ -134,63 +132,6 @@ internal sealed partial class WindowsTextReplacer : ITextReplacer
             }
         }
     }
-
-    /// <summary>
-    /// Windows silently drops input sent to an elevated window from a non-elevated app (and SendInput does not
-    /// report it), so this is checked up front.
-    /// </summary>
-    private static bool TargetIsElevatedAboveUs(nint hwnd)
-    {
-        User32.GetWindowThreadProcessId(hwnd, out var pid);
-        var targetElevated = ProcessInterop.IsElevated(pid);
-        var weAreElevated = ProcessInterop.IsElevated(ProcessInterop.GetCurrentProcess());
-        return targetElevated == true && weAreElevated != true;
-    }
-
-    private static async Task<bool> WaitUntilAsync(Func<bool> condition, TimeSpan timeout, CancellationToken ct)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (!condition())
-        {
-            if (DateTime.UtcNow >= deadline)
-            {
-                return false;
-            }
-
-            await Task.Delay(Poll, ct);
-        }
-
-        return true;
-    }
-
-    private static bool AnyModifierDown() =>
-        IsDown(User32.VK_CONTROL) || IsDown(User32.VK_SHIFT) || IsDown(User32.VK_MENU) || IsDown(User32.VK_LWIN) || IsDown(User32.VK_RWIN);
-
-    private static bool IsDown(uint vk) => (User32.GetAsyncKeyState((int)vk) & 0x8000) != 0;
-
-    private static unsafe bool SendCtrlV()
-    {
-        var inputs = stackalloc User32.INPUT[4];
-        inputs[0] = Key((ushort)User32.VK_CONTROL, up: false);
-        inputs[1] = Key(User32.VK_V, up: false);
-        inputs[2] = Key(User32.VK_V, up: true);
-        inputs[3] = Key((ushort)User32.VK_CONTROL, up: true);
-        return User32.SendInput(4, inputs, sizeof(User32.INPUT)) == 4;
-    }
-
-    private static User32.INPUT Key(ushort vk, bool up) => new()
-    {
-        type = User32.INPUT_KEYBOARD,
-        U = new User32.InputUnion
-        {
-            ki = new User32.KEYBDINPUT
-            {
-                wVk = vk,
-                dwFlags = up ? User32.KEYEVENTF_KEYUP : 0,
-                dwExtraInfo = User32.InjectedMarker,
-            },
-        },
-    };
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Selection editability: {Result} (kind {Kind}, selection read-only {Selection}, control read-only {Control}, classic edit read-only {Classic})")]
     private static partial void LogProbe(ILogger logger, FocusedControlKind kind, bool? selection, bool? control, bool? classic, SelectionEditability result);

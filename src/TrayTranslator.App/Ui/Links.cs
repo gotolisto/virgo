@@ -10,6 +10,9 @@ internal static class Links
     /// <summary>Google Cloud: enable Cloud Translation, then create an API key under Credentials.</summary>
     public const string GoogleSignUp = "https://console.cloud.google.com/apis/library/translate.googleapis.com";
 
+    /// <summary>Claude Console: create an API key (sign up first if needed).</summary>
+    public const string ClaudeSignUp = "https://platform.claude.com/settings/keys";
+
     public static void Open(string url)
     {
         try

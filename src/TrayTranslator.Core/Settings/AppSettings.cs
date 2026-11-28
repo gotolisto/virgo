@@ -1,3 +1,5 @@
+using TrayTranslator.Core.AiActions;
+
 namespace TrayTranslator.Core.Settings;
 
 /// <summary>
@@ -59,6 +61,14 @@ public sealed record AppSettings
     public bool ReplaceAutomatically { get; init; }
 
     /// <summary>
+    /// AI actions: select text, press an action's shortcut twice, and Claude's result replaces the selection.
+    /// </summary>
+    public AiActionList AiActions { get; init; } = AiActionList.Defaults;
+
+    /// <summary>The Claude model the AI actions use (a Claude API model id).</summary>
+    public string AiModel { get; init; } = AiModels.DefaultId;
+
+    /// <summary>
     /// The app version the user last ran. When the running version is newer, the app has just been updated
     /// and offers its What's new notes.
     /// </summary>
@@ -93,6 +103,8 @@ public sealed record AppSettings
             MaxTextLength = Math.Clamp(MaxTextLength, MinMaxTextLength, MaxMaxTextLength),
             GoogleMonthlyCeiling = Math.Max(0, GoogleMonthlyCeiling),
             Theme = Enum.IsDefined(Theme) ? Theme : ThemePreference.System,
+            AiActions = (AiActions ?? AiActionList.Empty).Normalize(),
+            AiModel = string.IsNullOrWhiteSpace(AiModel) ? AiModels.DefaultId : AiModel.Trim(),
         };
     }
 

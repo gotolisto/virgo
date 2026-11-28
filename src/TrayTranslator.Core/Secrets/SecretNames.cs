@@ -6,6 +6,7 @@ public static class SecretNames
 {
     public const string DeepLApiKey = "deepl.apiKey";
     public const string GoogleApiKey = "google.apiKey";
+    public const string AnthropicApiKey = "anthropic.apiKey";
 
     public static string ApiKeyFor(EngineId engine) => engine switch
     {

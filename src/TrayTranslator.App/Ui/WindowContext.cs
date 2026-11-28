@@ -1,3 +1,4 @@
+using TrayTranslator.Core.AiActions;
 using TrayTranslator.Core.Engines;
 using TrayTranslator.Core.Platform;
 using TrayTranslator.Core.Settings;
@@ -9,4 +10,5 @@ internal sealed record WindowContext(
     ISettingsStore Settings,
     ISecretStore Secrets,
     IReadOnlyDictionary<EngineId, ITranslationEngine> Engines,
+    IAiRewriter Ai,
     Func<bool> IsDarkTheme);
