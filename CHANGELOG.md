@@ -18,6 +18,10 @@ Versions follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH): 
   it in Spanish". Set up the Claude API key, the model and the actions under Settings → *AI actions
   (Claude)*. Two examples are included, switched off until you turn them on.
 
+### Changed
+- Releases no longer include `TrayTranslator-win-Portable.zip`. Download `TrayTranslator-win-Setup.exe` to
+  install; the zip was a second, 80 MB copy of the app that nothing needed.
+
 ## [0.2.2] - 2026-11-18
 
 ### Fixed

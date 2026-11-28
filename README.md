@@ -193,7 +193,7 @@ dotnet tool restore
 ```
 
 ```bash
-dotnet vpk pack --packId TrayTranslator --packVersion 0.1.0 --packDir artifacts/publish --mainExe TrayTranslator.exe --packTitle "Tray Translator" --icon src/TrayTranslator.App/Assets/app.ico --shortcuts StartMenuRoot --runtime win-x64 --outputDir artifacts/releases
+dotnet vpk pack --packId TrayTranslator --packVersion 0.1.0 --packDir artifacts/publish --mainExe TrayTranslator.exe --packTitle "Tray Translator" --icon src/TrayTranslator.App/Assets/app.ico --shortcuts StartMenuRoot --runtime win-x64 --noPortable --outputDir artifacts/releases
 ```
 
 On Linux or macOS, write `dotnet vpk "[win]" pack …` to cross-package for Windows.
